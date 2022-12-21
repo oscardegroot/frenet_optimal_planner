@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<launch>
+
+   <!-- Debug Info -->
+    <arg name="debug" default="false" />
+    <arg unless="$(arg debug)" name="launch_prefix" value="" />
+    <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+    <arg name="debug_config_parameter" default="false"/>
+    <arg name="debug_kinematic_cal" default="false"/>
+    <arg name="debug_collision_detection" default="false"/>
+    <arg name="gui" default="false" />
+
+
+    <!-- Robot Simulation -->
+    <include file="$(find jackal_gazebo)/launch/jackal_world.launch">
+    <arg name="gui" value="$(arg gui)" />
+    </include>
+    
+    <!-- Robot state -->
+    <include file="$(find mobile_robot_state_publisher)/launch/mobile_robot_publisher.launch">
+    </include>
+ 
+  <!-- lanelet2 Global Planner -->
+  <!--
+  <node pkg="mission_planner" type="mission_planner" name="mission_planner" output="screen">
+    <param name="map_frame"                   value="map" />
+    <param name="base_link_frame"             value="base_link" />
+    <remap from="~input/vector_map"           to="/lanelet_map_bin" />
+    <remap from="~input/goal_pose"            to="/move_base_simple/goal" />
+    <remap from="~input/checkpoint"           to="/move_base_simple/fake_goal" />
+    <remap from="~output/route"               to="/planning/mission_planning/route" />
+    <remap from="~debug/route_marker"         to="/planning/mission_planning/route_marker" />
+    <remap from="~output/global_path"         to="/planning/mission_planning/global_path" />
+
+  </node> -->
+  
+  <rosparam command="load" file="$(find frenet_optimal_planner)/config/path.yaml"/>
+  
+  <include file="$(find pedestrian_simulator)/launch/simulation.launch"/>
+
+  <!-- Local Planner -->
+  <node name="frenet_optimal_planner_node" pkg="frenet_optimal_planner" type="frenet_optimal_planner_node" output="screen">
+    <!-- Input Topic Names -->
+    <!-- <param name="odom_topic"                    value="simulator/ground_truth/odom"/> -->
+    <param name="odom_topic"                    value="/odometry/filtered"/>
+    <param name="obstacles_topic"               value="lgsvl_utils/ground_truth/objects"/>
+    <param name="lane_info_topic"               value="planning/mission_planning/global_path"/>
+    <!-- Output Topic Names -->
+    <param name="curr_traj_topic"               value="local_planner/current_trajectory"/>
+    <param name="next_traj_topic"               value="local_planner/next_trajectory"/>
+    <param name="ref_path_topic"                value="local_planner/ref_path"/>
+    <param name="sample_space_topic"            value="local_planner/sample_space"/>
+    <param name="final_traj_topic"              value="local_planner/final_trajectory"/>
+    <param name="candidate_trajs_topic"         value="local_planner/candidate_trajs"/>
+    <param name="ref_path_visual_topic"         value="lmpcc/reference_path"/>
+    <param name="traj_visual_topic"             value="lmpcc/collision_space"/>
+    <param name="vehicle_cmd_topic"             value="auto_vehicle_cmd"/>
+  </node>
+
+  <!-- Autoware Object Visualizer -->
+  <!-- <node ns="local_planner" pkg="lgsvl_utils" type="detected_objects_visualizer" name="autoware_objects_visualizer" output="log" respawn="true" /> -->
+
+  <!-- Dynamic Reconfigure GUI -->
+  <!-- <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen" /> -->
+  
+    <node pkg="frenet_optimal_planner" type="risk_assessment.py" name="risk_computation" output="screen"/> 
+  
+   <!-- configured rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find lmpcc)/rviz_config/jackal/jackal_simulator.rviz" output="log"/>
+
+</launch>

@@ -1,0 +1,16 @@
+global_path:
+  n_points_clothoid: 5
+  n_points_spline: 5
+  epsilon: 0.3
+  min_waypoints_distance: 2.0
+  frame: map
+  # x: [0,3, 6, 9, 12, 14]
+  # y: [0, 0, 0, 0, 0, 0] 
+  # psi: [0, 0, 0, 0, 0, 0]
+  x: [0,3, 6, 9, 12, 15, 18, 21, 24, 27, 30]  # For crowded env
+  y: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
+  psi: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
+  
+  #x: [0,3, 6, 9, 12, 16]
+  #y: [0, 0, 0, 0, 0, 0]
+  #psi: [0, 0, 0, 0, 0, 0] 

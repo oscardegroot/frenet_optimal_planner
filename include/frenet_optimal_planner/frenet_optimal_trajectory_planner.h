@@ -124,7 +124,8 @@ class FrenetOptimalTrajectoryPlanner
   virtual ~FrenetOptimalTrajectoryPlanner(){};
 
   void updateSettings(Setting& settings);
-
+  
+  // ros service for calculating probability of collision
   frenet_optimal_planner::ObservedRisk risk_srv_;
   ros::ServiceClient risk_planned_traj_client_;
 
@@ -133,11 +134,11 @@ class FrenetOptimalTrajectoryPlanner
   std::pair<Path, Spline2D> generateReferenceCurve(const fop::Lane& lane);
 
   // Plan for the optimal trajectory
-  // the returning type can be changed
-  std::vector<fop::FrenetPath> frenetOptimalPlanning(fop::Spline2D& cubic_spline, const fop::FrenetState& frenet_state, const int lane_id,
-                                                     const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async, 
-                                                     const lmpcc_msgs::obstacle_array& obstacles, const bool use_heuristic, fop::Path& curr_traj, double r_x_,  ros::ServiceClient risk_planned_traj_client);
-
+  std::pair<std::vector<FrenetPath>, std::vector<double>> 
+  frenetOptimalPlanning(Spline2D& cubic_spline, const FrenetState& frenet_state, const int lane_id,
+                        const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async,
+                        const lmpcc_msgs::obstacle_array& obstacles, const bool use_heuristic, fop::Path& curr_traj, double r_x);
+  
   std::vector<FrenetPath> all_trajs_;
   std::shared_ptr<std::vector<fop::FrenetPath>> all_trajs_fop_;
 
@@ -151,7 +152,8 @@ private:
   TestResult test_result_;
   FrenetState start_state_;
   SATCollisionChecker sat_collision_checker_;
-
+  
+  // The following six functions are for FISS planner
   std::vector<std::vector<std::vector<FrenetPath>>> sampleEndStates(const int lane_id, const double left_bound, 
                                                                     const double right_bound, const double current_speed, 
                                                                     const bool use_heuristic);
@@ -172,16 +174,24 @@ private:
 
   // Convert paths from frenet frame to gobal map frame
   int calculateGlobalPaths(std::vector<fop::FrenetPath>& frenet_traj_list, fop::Spline2D& cubic_spline, double r_x);
-  void convertToGlobalFrame(FrenetPath& traj, Spline2D& cubic_spline);
+  void convertToGlobalFrame(FrenetPath& traj, Spline2D& cubic_spline, double r_x);
   // Compute costs for candidate trajectories
   int computeCosts(std::vector<fop::FrenetPath>& frenet_trajs, const double curr_speed);
 
   // Check for vehicle kinematic constraints
   bool checkConstraints(FrenetPath& traj);
   
+  /*
+  // Check for collisions and calculate obstacle cost
+  std::vector<Path> predictTrajectories(const autoware_msgs::DetectedObjectArray& obstacles);
+  bool checkCollisions(FrenetPath& ego_traj, const std::vector<Path>& obstacle_trajs, 
+                       const autoware_msgs::DetectedObjectArray& obstacles, const bool use_async, int& num_checks);
+  std::pair<bool, int> checkTrajCollision(const FrenetPath& ego_traj, const std::vector<Path>& obstacle_trajs, 
+                                          const autoware_msgs::DetectedObjectArray& obstacles, const double margin_lon, const double margin_lat);
+  */
   
   bool checkCollisions(FrenetPath& ego_traj, const lmpcc_msgs::obstacle_array& obstacle_trajs, 
-                       const bool use_async, int& num_checks, fop::Path& curr_traj, ros::ServiceClient risk_planned_traj_client);
+                       const bool use_async, int& num_checks, fop::Path& curr_traj);
 
   std::pair<bool, int> checkTrajCollision(const FrenetPath& ego_traj, const lmpcc_msgs::obstacle_array& obstacle_trajs, 
                                           const double margin_lon, const double margin_lat, fop::Path& curr_traj);

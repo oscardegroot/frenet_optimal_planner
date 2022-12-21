@@ -82,6 +82,8 @@ class FrenetOptimalPlannerNode
   double angular_velocity_;
   double current_angular_velocity_;
 
+
+
   // Vehicle's current state
   fop::VehicleState current_state_;    // State of the vehicle baselink
   fop::VehicleState frontaxle_state_;  // State of the vehicle frontaxle
@@ -96,7 +98,11 @@ class FrenetOptimalPlannerNode
   fop::Path curr_trajectory_;           // Output Trajectory
   std::vector<double> roi_boundaries_;  //[0] = left boundary length in metre, [1] = right boundary length in metre.
   
+  // results logging
   std::vector<float> vehicle_vel_;
+  double total_exp_time_;
+  std::vector<float> duration_per_iteration_;
+
   // Controllers
   control::PID pid_;
 

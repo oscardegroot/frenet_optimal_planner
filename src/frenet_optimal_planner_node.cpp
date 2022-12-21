@@ -195,7 +195,8 @@ FrenetOptimalPlannerNode::FrenetOptimalPlannerNode() : tf_listener(tf_buffer)
 
   // visualizes black circles for pedestrians
   obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 20));                             
-  
+  total_exp_time_ = 0.0;
+
 
 
   // we can remove this, and call the main function (processreferencepath) from the obstacles callback function
@@ -314,23 +315,36 @@ void FrenetOptimalPlannerNode::processreferencepath()
 
   ros_markers_reference_path_->publish();
   publishRefSpline(ref_spline_);
-
-  // std::cout << "the defined boundaries are" << roi_boundaries_[0] << std::endl;
-
-   
-  // Get the planning result 
-  std::vector<fop::FrenetPath> best_traj_list = frenet_planner_.frenetOptimalPlanning(ref_path_and_curve.second, start_state_, target_lane_id_, 
-                                                                                      roi_boundaries_[0], roi_boundaries_[1], current_state_.v, CHECK_COLLISION, USE_ASYNC, 
-                                                                                      prediction_msg_, USE_HEURISTIC, curr_trajectory_, r_x_, risk_planned_traj_client_);
   
+  // the one with fast planning
+  std::cout << "enter the planner" << std::endl;
+  const auto planning_results = frenet_planner_.frenetOptimalPlanning(ref_path_and_curve.second, start_state_, target_lane_id_,
+                                                                      roi_boundaries_[0], roi_boundaries_[1], current_state_.v, CHECK_COLLISION, USE_ASYNC,
+                                                                      prediction_msg_, USE_HEURISTIC, curr_trajectory_, r_x_);
+  
+  // Find the best path from the all candidates 
+  // std::cout << "current lane id is: " << current_lane_id_ << std::endl;
+
+  std::vector<FrenetPath> best_traj_list = planning_results.first;
+  //ROS_INFO("Local Planner: Best trajs Selected");
+  
+ 
   if (best_traj_list.empty())
   {
     ROS_ERROR("Local Planner: Frenet Optimal Planning Could Not Find a Safe Trajectory");
+    // ToDo: check what does this mean?
+    // publishEmptyTrajsAndStop();
+    // return;
   }
   
   
   // find the best trajectory from all candidates
+  if (!best_traj_list.empty())
+  {
+    //std::cout << "size of best trajectory before calling selectLane function: " << best_traj_list[0].x.size() << std::endl;
+  }
   fop::FrenetPath best_traj = selectLane(best_traj_list, current_lane_id_);
+  //std::cout << "size of best trajectory after calling selectLane function: " << best_traj.x.size() << std::endl;
   ROS_INFO("Local Planner: Best trajs Selected");
 
   // Concatenate the best path into output_path
@@ -341,8 +355,8 @@ void FrenetOptimalPlannerNode::processreferencepath()
 
   // Publish the best trajs
   publishRefSpline(ref_spline_);
-  // publishCandidateTrajs(frenet_planner_.all_trajs);
-  publishCandidateTrajs(*frenet_planner_.all_trajs_fop_);
+  publishCandidateTrajs(frenet_planner_.all_trajs_);
+  //publishCandidateTrajs(*frenet_planner_.all_trajs_fop_);
   publishCurrTraj(curr_trajectory_);
   publishNextTraj(best_traj);
   visualizeTraj(best_traj);
@@ -401,7 +415,7 @@ void FrenetOptimalPlannerNode::visualizeTraj(const fop::FrenetPath& next_traj)
 
           if (next_traj.x[i+1] < next_traj.x[i])
           {
-            return;
+            break;
           }
         }
       }
@@ -419,7 +433,7 @@ void FrenetOptimalPlannerNode::visualizeTraj(const fop::FrenetPath& next_traj)
 
           if (next_traj.x[i+1] < next_traj.x[i])
           {
-            return;
+            break;
           }
         }
       }
@@ -442,12 +456,6 @@ void FrenetOptimalPlannerNode::visualizeTraj(const fop::FrenetPath& next_traj)
   }
 
   collision_space_markers_->publish();
-  /*
-  const auto output_traj_marker = CollisionDetectorVisualization::visualizePredictedTrajectory(
-    vis_traj, SETTINGS.vehicle_width, 0.0, map_height_, current_state_, true, marker_id, "final", Visualization::COLOR::GREEN, 0.15);
-  
-  final_traj_pub.publish(output_traj_marker);
-  */
 }
 
 void FrenetOptimalPlannerNode::obstacleCallback(const derived_object_msgs::ObjectArray &msg)
@@ -462,26 +470,6 @@ void FrenetOptimalPlannerNode::obstacleTrajectoryPredictionsCallback(const lmpcc
   ROS_INFO_STREAM("FrenetOptimalPlannerNode::ObstacleTrajectoryPredictionsCallback received " << msg.obstacles.size() << " obstacle predictions");
   // this msg includes the trajectory prediction for each obstacle's gaussian mode along prediction horizon
   prediction_msg_ = msg;
-  //processreferencepath();
-
-
-  //debug
-  // iterate over obstacles
-  /*
-  for (size_t v = 0; v < msg.obstacles.size(); v++)
-  {
-    // iterate over number of gaussian modes associated to this obstacle
-    for (size_t mode = 0; mode < msg.obstacles[v].gaussians.size(); mode++)
-    {
-      // iterate over prediction stages
-      for (size_t stage = 0; stage < msg.obstacles[v].gaussians[mode].mean.poses.size(); stage++)
-      {
-        std::cout << "object x-prediction: " << msg.obstacles[v].gaussians[mode].mean.poses[stage].pose.position.x << std::endl;
-        std::cout << "object y-prediction: " << msg.obstacles[v].gaussians[mode].mean.poses[stage].pose.position.y << std::endl;
-      }
-    }
-  }
-  */
 }
 
 
@@ -619,17 +607,6 @@ void FrenetOptimalPlannerNode::publishEmptyTrajsAndStop()
   publishRefSpline(fop::Path());
   publishCurrTraj(fop::Path());
   publishNextTraj(fop::FrenetPath());
-
-  // actuate braking since we cannot find a safe trajectory to follow
-  /*
-  control_msg_ = geometry_msgs::Twist();
-  double velocity_after_braking;
-  double deceleration = 5.0;
-  velocity_after_braking = current_state_.v - deceleration * (1.0 / 20);
-  control_msg_.linear.x  = std::max(velocity_after_braking, 0.);    // Don't drive backwards when braking
-  control_msg_.angular.z = 0.0;
-  command_pub_.publish(control_msg_);
-  */
 }
 
 // Update the vehicle front axle state (used in odomcallback)
@@ -806,6 +783,19 @@ bool FrenetOptimalPlannerNode::feedWaypoints()
       return false;
     }
   }
+
+  // debug
+  /*
+  for (int index = 0; index < lane_.points.size(); index++)
+  {
+      std::cout << "lane points: " << lane_.points[index].point.x << std::endl;
+  }
+
+  for (int index = 0; index < local_lane_.points.size(); index++)
+  {
+      std::cout << "local_lane points: " << local_lane_.points[index].point.x << std::endl;
+  }
+  */
 
   return true;
 }
@@ -1061,7 +1051,6 @@ void FrenetOptimalPlannerNode::concatPath(const fop::FrenetPath& next_traj, cons
     const int next_frontlink_wp_id = fop::nextWaypoint(frontaxle_state_, curr_trajectory_);
     // Calculate Control Outputs
     calculateControlOutput(next_frontlink_wp_id, frontaxle_state_);
-    
 
     const int next_wp_id = fop::nextWaypoint(current_state_, curr_trajectory_);
     std::cout << "next_wp_id is: " << next_wp_id << std::endl;
@@ -1080,7 +1069,23 @@ void FrenetOptimalPlannerNode::concatPath(const fop::FrenetPath& next_traj, cons
 
   // debug output trajectory
   std::cout << "next trajectory size is: " << next_traj.x.size() << std::endl;
-  std::cout << "current x-state is: " << current_state_.x << std::endl; 
+  std::cout << "current x-state is: " << current_state_.x << std::endl;
+  std::cout << "current y-state is: " << current_state_.y << std::endl;
+
+
+  //debug
+  /*
+  for (size_t i = 0; i < next_traj.x.size(); i++)
+  {
+    std::cout << "x-position of the next trajectory is: " << next_traj.x[i] << std::endl;
+  }
+
+  for (size_t i = 0; i < curr_trajectory_.x.size(); i++)
+  {
+    std::cout << "x-position of current trajectory is: " << curr_trajectory_.x[i] << std::endl;
+  }
+  */
+  
 }
 
 // Steering Help Function

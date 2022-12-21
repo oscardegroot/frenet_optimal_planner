@@ -5,15 +5,15 @@ namespace fop
 
 FrenetOptimalTrajectoryPlanner::TestResult::TestResult() : count(0), total_fix_cost(0.0), total_dyn_cost(0.0), total_dist(0.0)
 {
-  this->numbers = std::vector<int>(5, int(0));
-  this->numbers_min = std::vector<int>(5, int(100000));
-  this->numbers_max = std::vector<int>(5, int(0));
-  this->total_numbers = std::vector<int>(5, int(0));
+  this->numbers = std::vector<int>(4, int(0));
+  this->numbers_min = std::vector<int>(4, int(100000));
+  this->numbers_max = std::vector<int>(4, int(0));
+  this->total_numbers = std::vector<int>(4, int(0));
 
-  this->time = std::vector<double>(6, double(0));
-  this->time_min = std::vector<double>(6, double(100000));
-  this->time_max = std::vector<double>(6, double(0));
-  this->total_time = std::vector<double>(6, double(0));
+  this->time = std::vector<double>(5, double(0));
+  this->time_min = std::vector<double>(5, double(100000));
+  this->time_max = std::vector<double>(5, double(0));
+  this->total_time = std::vector<double>(5, double(0));
 
   this->numbers.shrink_to_fit();
   this->numbers_min.shrink_to_fit();
@@ -52,6 +52,8 @@ FrenetOptimalTrajectoryPlanner::TestResult::TestResult(const int length) : lengt
 std::vector<double> FrenetOptimalTrajectoryPlanner::TestResult::updateCount(const std::vector<int> numbers, const std::vector<std::chrono::_V2::system_clock::time_point> timestamps,
                                                                             const double fix_cost, const double dyn_cost, const double dist)
 {
+  std::cout << "the length is: " << this->length << std::endl;
+  std::cout << "the numbers size is: " << numbers.size() << std::endl;
   if (numbers.size() != this->length || timestamps.size() != this->length + 1)
   {
     std::cout << "Recorded TestResult for this planning iteration is invalid" << std::endl;
@@ -98,8 +100,8 @@ std::vector<double> FrenetOptimalTrajectoryPlanner::TestResult::updateCount(cons
   // dist_history.emplace_back(dist);
   
   std::vector<double> stats;
-  stats.push_back(this->time[5]);
-  stats.push_back(std::round(1000/this->time[5]));
+  stats.push_back(this->time[4]);
+  stats.push_back(std::round(1000/this->time[4]));
   stats.push_back(double(this->numbers[2]));
   stats.push_back(fix_cost + dyn_cost);
   return stats;
@@ -119,33 +121,39 @@ void FrenetOptimalTrajectoryPlanner::TestResult::printSummary()
   std::cout << "Step 5 : Checked Collisions for  " << this->numbers[4] << " PolygonPairs in " << this->time[4] << " ms" << std::endl;
   std::cout << "Total  : Planning Took           " << this->time[5] << " ms (or " << 1000/this->time[5] << " Hz)" << std::endl;
   std::cout << "Dist   : Distance to History Best" << this->total_dist << std::endl;
-  
+  */
+
+ // Print Summary for Worst Case performance
+  std::cout << " " << std::endl;
+  std::cout << "Summary: Worst Case Performance (" << count << " iterations so far)" << std::endl;
+  std::cout << "Step 1 : Generated               " << this->numbers_max[0] << " End States   in " << this->time_max[0] << " ms" << std::endl;
+  std::cout << "Step 2 : Generated & Evaluated   " << this->numbers_max[1] << " Trajectories in " << this->time_max[1] << " ms" << std::endl;
+  std::cout << "Step 3 : Validated               " << this->numbers_max[2] << " Trajectories in " << this->time_max[2] << " ms" << std::endl;
+  std::cout << "Total  : Planning Took           " << this->time_max[4] << " ms (or " << 1000/this->time_max[4] << " Hz)" << std::endl;
   // Print Summary for average performance
   std::cout << " " << std::endl;
-  std::cout << "Summary: Average Performance (" << this->count << " iterations so far)" << std::endl;
-  std::cout << "Step 1 : Generated               " << this->total_numbers[0]/this->count << " Trajectories in " << this->total_time[0]/this->count << " ms" << std::endl;
-  std::cout << "Step 2 : Converted               " << this->total_numbers[1]/this->count << " Trajectories in " << this->total_time[1]/this->count << " ms" << std::endl;
-  std::cout << "Step 3 : Computed Cost for       " << this->total_numbers[2]/this->count << " Trajectories in " << this->total_time[2]/this->count << " ms" << std::endl;
-  std::cout << "Step 4 : Checked Constraints for " << this->total_numbers[3]/this->count << " Trajectories in " << this->total_time[3]/this->count << " ms" << std::endl;
-  std::cout << "Step 5 : Checked Collisions for  " << this->total_numbers[4]/this->count << " PolygonPairs in " << this->total_time[4]/this->count << " ms" << std::endl;
-  std::cout << "Total  : Planning Took           " << this->total_time[5]/this->count << " ms (or " << 1000/(this->total_time[5]/this->count) << " Hz)" << std::endl;
+  std::cout << "Summary: Average Performance (" << this->count << " planning cycles so far)" << std::endl;
+  std::cout << "Step 1 : Generated               " << this->total_numbers[0]/this->count << " End States in " << this->total_time[0]/this->count << " ms" << std::endl;
+  std::cout << "Step 2 : Generated & Evaluated   " << this->total_numbers[1]/this->count << " Trajectories in " << this->total_time[1]/this->count << " ms" << std::endl;
+  std::cout << "Step 3 : Validated               " << this->total_numbers[2]/this->count << " Trajectories in " << this->total_time[2]/this->count << " ms" << std::endl;
+  std::cout << "Total  : Planning Took           " << this->total_time[4]/this->count << " ms (or " << 1000/(this->total_time[4]/this->count) << " Hz)" << std::endl;
   std::cout << "Cost   : Optimal's Fix Cost      " << this->total_fix_cost/count << std::endl;
   std::cout << "Cost   : Optimal's Dyn Cost      " << this->total_dyn_cost/count << std::endl;
   std::cout << "Cost   : Optimal's Total Cost    " << (this->total_fix_cost + this->total_dyn_cost)/count << std::endl;
   std::cout << "Dist   : Distance to History Best" << this->total_dist/count << std::endl;
-  */
+  
 }
 
 FrenetOptimalTrajectoryPlanner::FrenetOptimalTrajectoryPlanner()
 {
   this->settings_ = Setting();
-  this->test_result_ = TestResult(5);
+  this->test_result_ = TestResult(4);
 }
 
 FrenetOptimalTrajectoryPlanner::FrenetOptimalTrajectoryPlanner(FrenetOptimalTrajectoryPlanner::Setting& settings)
 {
   this->settings_ = settings;
-  this->test_result_ = TestResult(5);
+  this->test_result_ = TestResult(4);
   ros::NodeHandle nh;
   risk_planned_traj_client_ = nh.serviceClient<frenet_optimal_planner::ObservedRisk>("planned_traj_risk");
 
@@ -178,139 +186,163 @@ std::pair<Path, Spline2D> FrenetOptimalTrajectoryPlanner::generateReferenceCurve
   return std::pair<Path, Spline2D>{ref_path, cubic_spline};
 }
 
-
-std::vector<fop::FrenetPath> 
-FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_spline, const fop::FrenetState& frenet_state, const int lane_id,
-                                                      const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async, 
-                                                      const lmpcc_msgs::obstacle_array& obstacles, const bool use_heuristic, fop::Path& curr_trajectory, double r_x,  ros::ServiceClient risk_planned_traj_client)
+std::pair<std::vector<fop::FrenetPath>, std::vector<double>> 
+FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_spline, const fop::FrenetState& start_state, const int lane_id,
+                                                      const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async,
+                                                      const lmpcc_msgs::obstacle_array& obstacles, const bool use_heuristic, fop::Path& curr_traj, double r_x)
 {
-  // Clear the canidate trajectories from the last planning cycle
-  std::priority_queue<FrenetPath, std::vector<FrenetPath>, std::greater<std::vector<FrenetPath>::value_type>> empty;
-  std::swap(candidate_trajs_, empty);
-  
   // Initialize a series of results to be recorded
   std::vector<int> numbers;
   std::vector<std::chrono::_V2::system_clock::time_point> timestamps;
   timestamps.emplace_back(std::chrono::high_resolution_clock::now());
-  // we don't need it at the moment, since we already have the predictions from the pedestrians simulator package
-  //const auto obstacle_trajs = predictTrajectories(obstacles);
 
-  // Sample a list of FrenetPaths
-  all_trajs_fop_ = std::make_shared<std::vector<fop::FrenetPath>>(generateFrenetPaths(frenet_state, lane_id, left_width, right_width, current_speed));
-  numbers.push_back(all_trajs_fop_->size());
-  timestamps.emplace_back(std::chrono::high_resolution_clock::now());
+  /* --------------------------------- Construction Zone -------------------------------- */
+  // Clear the canidate trajectories from the last planning cycle
+  
+  std::priority_queue<fop::FrenetPath, std::vector<fop::FrenetPath>, std::greater<std::vector<fop::FrenetPath>::value_type>> empty;
+  std::swap(candidate_trajs_, empty);
+  all_trajs_.clear();
 
-  // Convert to global paths
-  const int num_conversion_checks = calculateGlobalPaths(*all_trajs_fop_, cubic_spline, r_x); 
-  numbers.push_back(num_conversion_checks);
-  timestamps.emplace_back(std::chrono::high_resolution_clock::now());
+  // Initialize start state
+  start_state_ = start_state;
 
-  // Compute costs
-  const int num_cost_checks = computeCosts(*all_trajs_fop_, current_speed);
-
-  //std::cout << "number of all generated trajectroties is: " << all_trajs_fop->size() << std::endl;
-  //std::cout << "number of candidate trajectories is: " << candidate_trajs_.size() << std::endl;
-  numbers.push_back(num_cost_checks);
+  // Sample all the end states in 3 dimensions, [d, v, t] and form the 3d traj candidate array
+  //std::cout << "sample end states" << std::endl;
+  auto trajs_3d = sampleEndStates(lane_id, left_width, right_width, current_speed, use_heuristic);
+  //std::cout << "end states were sampled" << std::endl;
+  numbers.emplace_back(trajs_3d.size()*trajs_3d[0].size()*trajs_3d[0][0].size());
   timestamps.emplace_back(std::chrono::high_resolution_clock::now());
 
   int num_iter = 0;
-  int num_constraint_checks = 0;
+  int num_trajs_generated = 0;
+  int num_trajs_validated = 0;
   int num_collision_checks = 0;
 
-  bool best_traj_found = false;
+  // Start the iterative search 
+  Eigen::Vector3i best_idx;
+  bool best_traj_found = false;  
 
-  std::priority_queue<FrenetPath, std::vector<FrenetPath>, std::greater<std::vector<FrenetPath>::value_type>> candidate_trajs_debug;
-  candidate_trajs_debug = candidate_trajs_;
-  FrenetPath traj_debug;
-  while (!candidate_trajs_debug.empty())
+  //std::cout << "let's enter the main while loop" << std::endl;
+  while(!best_traj_found)
   {
-    traj_debug = candidate_trajs_debug.top();
-    candidate_trajs_debug.pop();
-  }
-
-  int traj_number = 0;
-  while(!best_traj_found && !candidate_trajs_.empty())
-  {
-    best_traj_ = candidate_trajs_.top();
-    candidate_trajs_.pop();
-    traj_number++;
-    // Check the constraints
-    num_constraint_checks++;
-    bool is_safe;
-    if (!checkConstraints(best_traj_))
+    //std::cout << "number of candidate trajectories is: " << candidate_trajs_.size() << std::endl;
+    // ################################ Initial Guess #####################################
+    if (candidate_trajs_.empty())
     {
-      continue;
+      if (!findInitGuess(trajs_3d, best_idx))
+      {
+        // all samples have been searched and no feasible candidate found
+        // std::cout << "fop: Searched through all trajectories, found no suitable candidate" << std::endl;
+        ROS_ERROR("fop: Searched through all trajectories, found no suitable candidate");
+        break;
+      }
     }
     else
     {
-      //std::cout << "constraint check is passed" << std::endl;
-      // Check for collisions
-      if (check_collision)
+      best_idx = candidate_trajs_.top().idx;
+    }
+
+    // ################################ Search Process #####################################
+    bool converged = false;
+    while (!converged)
+    {
+      // std::cout << "fop: Search iteration " << num_iter << " convergence: " << converged << std::endl;
+      // std::cout << "fop: Current idx " << best_idx(0) << best_idx(1) << best_idx(2) << std::endl;
+
+      // Perform a search for the real best trajectory using gradients
+      converged = findNextBest(trajs_3d, best_idx, num_trajs_generated);
+      num_iter++;
+    }
+    numbers.emplace_back(num_trajs_generated);
+    timestamps.emplace_back(std::chrono::high_resolution_clock::now());
+
+    // ################################ Validation Process #####################################
+    // std::cout << "fop: Validating Candiate Trajectory" << std::endl;
+
+    if (!candidate_trajs_.empty())
+    {
+      auto candidate_traj = candidate_trajs_.top();
+      //std::cout << "index of current safety-checked trajectory is: " << candidate_traj.idx(0) << candidate_traj.idx(1) << candidate_traj.idx(2) << std::endl;
+      candidate_trajs_.pop();
+      num_trajs_validated++;
+      
+      // Convert to the global frame
+      convertToGlobalFrame(candidate_traj, cubic_spline, r_x);
+      // Check for constraints
+      bool is_safe = checkConstraints(candidate_traj);
+      if (!is_safe)
       {
-        //std::cout << "let's compute risk" << std::endl;
-        is_safe = checkCollisions(best_traj_, obstacles, use_async, num_collision_checks, curr_trajectory, risk_planned_traj_client);
-        /*
-        if (!is_safe)
-        {
-          std::cout << "The trajectory is not safe" << std::endl;
-        }
-        */
+        std::cout << "failed constraints check" << std::endl;
+        continue;
       }
       else
       {
-        std::cout << "Collision Checking Skipped" << std::endl;
-        is_safe = true;
+        // Check for collisions
+        if (check_collision)
+        {
+          is_safe = checkCollisions(candidate_traj, obstacles, use_async, num_collision_checks, curr_traj);
+        }
+        else
+        {
+          std::cout << "Collision Checking Skipped" << std::endl;
+          is_safe = true;
+        }
       }
-    }
-    
-    if (is_safe)
-    {
-      // added to avoid mis-calculation of r_x that results in a far starting point from current robot's state
-      // if (abs(r_x - best_traj_.r_x[0]) < 0.1)
+
+      if (is_safe)
       {
         best_traj_found = true;
-        std::cout << "the number of best traj is: " << traj_number << std::endl;
+        best_traj_ = std::move(candidate_traj);
+        break;
       }
-      break;
     }
   }
 
   double fix_cost = 0.0;
   double dyn_cost = 0.0;
-  double dist = 0.0;
-  if (best_traj_found && prev_best_traj_.collision_passed) // ensure the previous best exists
+  int dist = 0.0;
+  std::cout << "number of generated trajectories is: " << num_trajs_generated << std::endl;
+  std::cout << "number of validated trajectories is: " << num_trajs_validated << std::endl;
+  if (best_traj_found && prev_best_traj_.is_generated) // ensure the previous best exists
   {
     fix_cost = best_traj_.fix_cost;
     dyn_cost = best_traj_.dyn_cost;
     for (int i = 0; i < 3; i++)
     {
-      const double l = best_traj_.idx(i) - prev_best_idx_(i);
-      dist += std::pow(l, 2);
+      const int l = std::abs(prev_best_traj_.idx(i) - best_traj_.idx(i));
+      if (l <= 100)
+      {
+        dist += std::pow(l, 2);
+      }
     }
   }
 
-  numbers.push_back(num_constraint_checks);
+  std::cout << "fop: Search Done in " << num_iter << " iterations" << std::endl;
+  numbers.emplace_back(num_trajs_validated);
   timestamps.emplace_back(std::chrono::high_resolution_clock::now());
-  numbers.push_back(num_collision_checks);
+  numbers.emplace_back(num_collision_checks);
   timestamps.emplace_back(std::chrono::high_resolution_clock::now());
-  test_result_.updateCount(std::move(numbers), std::move(timestamps), fix_cost, dyn_cost, dist);
+  const auto stats = test_result_.updateCount(numbers, timestamps, fix_cost, dyn_cost, dist);
   test_result_.printSummary();
+  /* --------------------------------- Construction Zone -------------------------------- */
+  
+  // Convert the other unused candiates as well (for visualization only)
+  
+  for (auto& traj : all_trajs_)
+  {
+    convertToGlobalFrame(traj, cubic_spline, r_x);
+  }
 
+  std::vector<FrenetPath> result;
   if (best_traj_found)
   {
     prev_best_traj_ = best_traj_;
-    prev_best_idx_ = best_traj_.idx;
+    result.emplace_back(best_traj_);
+  }
 
-    std::cout << "start position of traj. of the robot: " << best_traj_.x[0] << std::endl;
-    
-    return std::vector<FrenetPath>{1, best_traj_};
-  }
-  else
-  {
-    ROS_ERROR("Local Planner: No valid trajectory is obtained");
-    return std::vector<FrenetPath>{};
-  }
+  return std::pair<std::vector<FrenetPath>, std::vector<double>>{result, stats};
 }
+
 
 /**
  * @brief Checks whether frenet paths are safe to execute based on constraints 
@@ -318,7 +350,7 @@ FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_splin
  * @param idx the index of the lowest estimated cost trajectory
  * @return true if there are still trajs not searched before, false otherwise
  */
-bool FrenetOptimalTrajectoryPlanner::findInitGuess(const std::vector<std::vector<std::vector<FrenetPath>>>& trajs, Eigen::Vector3i& idx)
+bool FrenetOptimalTrajectoryPlanner::findInitGuess(const std::vector<std::vector<std::vector<fop::FrenetPath>>>& trajs, Eigen::Vector3i& idx)
 {
   double min_cost = std::numeric_limits<double>::max();
   bool found = false;
@@ -331,6 +363,7 @@ bool FrenetOptimalTrajectoryPlanner::findInitGuess(const std::vector<std::vector
       for (int k = 0; k < trajs[0][0].size(); k++)
       {  
         if (!trajs[i][j][k].is_searched && trajs[i][j][k].est_cost < min_cost)
+        //if (trajs[i][j][k].est_cost < min_cost)
         {
           min_cost = trajs[i][j][k].est_cost;
           idx(0) = i;
@@ -349,7 +382,7 @@ bool FrenetOptimalTrajectoryPlanner::findNextBest(std::vector<std::vector<std::v
 {
   if (trajs[idx(0)][idx(1)][idx(2)].is_searched)
   {
-    // std::cout << "FNB: At Current idx " << idx(0) << idx(1) << idx(2) << " converged" << std::endl;
+    //std::cout << "FNB: At Current idx " << idx(0) << idx(1) << idx(2) << " converged" << std::endl;
     return true; // converged
   }
   else
@@ -375,7 +408,7 @@ bool FrenetOptimalTrajectoryPlanner::findNextBest(std::vector<std::vector<std::v
   }
 }
 
-Eigen::Vector3d FrenetOptimalTrajectoryPlanner::findGradients(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, const Eigen::Vector3i& idx, int& num_traj)
+Eigen::Vector3d FrenetOptimalTrajectoryPlanner::findGradients(std::vector<std::vector<std::vector<fop::FrenetPath>>>& trajs, const Eigen::Vector3i& idx, int& num_traj)
 {
   const Eigen::Vector3i sizes = {int(trajs.size()), int(trajs[0].size()), int(trajs[0][0].size())};
   const Eigen::Vector3i directions = findDirection(sizes, idx);
@@ -485,18 +518,34 @@ double FrenetOptimalTrajectoryPlanner::getTrajAndRealCost(std::vector<std::vecto
 
     // Add this trajectory to the candidate queue
     all_trajs_.push_back(trajs[i][j][k]);
+    //std::cout << "the added traj. index is: " << i << j << k << std::endl;
     candidate_trajs_.push(trajs[i][j][k]);
 
     return trajs[i][j][k].final_cost;
   }
 }
 
-void FrenetOptimalTrajectoryPlanner::convertToGlobalFrame(FrenetPath& traj, Spline2D& cubic_spline)
+void FrenetOptimalTrajectoryPlanner::convertToGlobalFrame(FrenetPath& traj, Spline2D& cubic_spline, double r_x)
 {
+  
+  VehicleState compensate_state = cubic_spline.calculatePosition(traj.s[0]);
   // calculate global positions
   for (int j = 0; j < traj.s.size(); j++)
   {
+    bool shifted = false;
+    if (abs(r_x - compensate_state.x) > 1.0)
+    {
+      // this means the planned trajectory is shifted (dirty fix)
+      shifted = true;
+    }
+    
     VehicleState state = cubic_spline.calculatePosition(traj.s[j]);
+    if (shifted)
+    {
+      // 3 is the seperation distance between two path points. Needs to be determined through a yaml file.
+      state.x = state.x - 3;
+    }
+
     double i_yaw = cubic_spline.calculateYaw(traj.s[j]);
     const double di = traj.d[j];
     const double frenet_x = state.x + di * cos(i_yaw + M_PI / 2.0);
@@ -734,7 +783,6 @@ int FrenetOptimalTrajectoryPlanner::calculateGlobalPaths(std::vector<fop::Frenet
       fop::VehicleState state = cubic_spline.calculatePosition(frenet_traj_list[i].s[j]);
       if (shifted)
       {
-        // 3 is the seperation distance between two path points. Needs to be determined through a yaml file 
         state.x = state.x - 3;
         frenet_traj_list[i].shifted = true;
       }
@@ -795,15 +843,6 @@ bool FrenetOptimalTrajectoryPlanner::checkConstraints(FrenetPath& traj)
   bool passed = true;
   for (int i = 0; i < traj.c.size(); i++)
   {
-    
-    /*
-    if (!std::isnormal(traj.x[i]) || !std::isnormal(traj.y[i]))
-    {
-      passed = false;
-      std::cout << "Condition 0: Contains ilegal values" << traj.x[i] << std::endl;
-      break;
-    }
-    */
     if (traj.s_d[i] > settings_.max_speed)
     {
       passed = false;
@@ -871,7 +910,7 @@ int FrenetOptimalTrajectoryPlanner::computeCosts(std::vector<fop::FrenetPath>& f
 
 
 bool FrenetOptimalTrajectoryPlanner::checkCollisions(FrenetPath& ego_traj, const lmpcc_msgs::obstacle_array& obstacle_trajs, 
-                                                     const bool use_async, int& num_checks, fop::Path& curr_trajectory, ros::ServiceClient risk_planned_traj_client)
+                                                     const bool use_async, int& num_checks, fop::Path& curr_trajectory)
 {
   /*
   if (use_async)
@@ -922,6 +961,7 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
     planned_traj.yaw.push_back(ego_traj.yaw[i]);
   }
   
+  
   for (int i = 0; i < obstacles.obstacles.size(); i++)
   {
     const int num_steps = planned_traj.x.size();
@@ -937,7 +977,7 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
       // use Jackal radius instead of vehicle's width and length
       double robot_radius    = 0.325;
       double obstacle_radius = 0.3;
-      double safety_distance = 0.1;
+      double safety_distance = 0.05;
 
       double obstacle_x_pos;
       double obstacle_y_pos;
@@ -956,6 +996,7 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
         distance = std::sqrt(std::pow(diff_x, 2) + std::pow(diff_y, 2));
 
         // std::cout << "distance between robot and obstacle is: " << distance << std::endl;
+        // prune trajectories that collide with constant velocity model (this saves much computation time)
         if (distance < (robot_radius + obstacle_radius + safety_distance))
         {
           return std::pair<bool, int>{false, num_checks};
@@ -966,11 +1007,9 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
       
     }
   }
-  
 
-  // Uncomment this part to take the uncertainty in the humans behavior into consideration
-  /*
   // call the service where we calculate collision probability 
+  /*
   risk_srv_.request.pred_traj.resize(planned_traj.x.size());
   risk_srv_.request.obstacles = obstacles.obstacles;
       
@@ -985,18 +1024,16 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
   {
     std_msgs::Float64 msg;
     msg.data = risk_srv_.response.estimated_risk;
-
+    
     if (msg.data <= 0.05)
     {
+      std::cout << "computed best trajectory risk is: " << msg.data << std::endl;
       return std::pair<bool, int>{true, num_checks};
     }
     else
     {
       return std::pair<bool, int>{false, num_checks};
     }
-    // std::cout << "the computed risk is: " << msg.data << std::endl;
-    // pred_traj_risk_pub_.publish(msg);
-    // estimated_risk_vector_.push_back(risk_srv_.response.estimated_risk);
   }
   else
   {
@@ -1006,4 +1043,40 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
   return std::pair<bool, int>{true, num_checks};
 }
 
+
+/*
+std::vector<Path> FrenetOptimalTrajectoryPlanner::predictTrajectories(const autoware_msgs::DetectedObjectArray& obstacles)
+{
+  std::vector<Path> obstacle_trajs;
+
+  for (const auto& obstacle : obstacles.objects)
+  {
+    Path obstacle_traj;
+
+    obstacle_traj.x.push_back(obstacle.pose.position.x);
+    obstacle_traj.y.push_back(obstacle.pose.position.y);
+    tf2::Quaternion q_tf2(obstacle.pose.orientation.x, obstacle.pose.orientation.y,
+                          obstacle.pose.orientation.z, obstacle.pose.orientation.w);
+    tf2::Matrix3x3 m(q_tf2.normalize());
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    obstacle_traj.yaw.push_back(yaw);
+    const double v = magnitude(obstacle.velocity.linear.x, obstacle.velocity.linear.y, obstacle.velocity.linear.z);
+    obstacle_traj.v.push_back(v);
+    
+    const int steps = settings_.max_t/settings_.tick_t;
+    for (int i = 0; i < steps; i++)
+    {
+      obstacle_traj.x.push_back(obstacle_traj.x.back() + v*settings_.tick_t*std::cos(yaw));
+      obstacle_traj.x.push_back(obstacle_traj.y.back() + v*settings_.tick_t*std::sin(yaw));
+      obstacle_traj.yaw.push_back(yaw);
+      obstacle_traj.v.push_back(v);
+    }
+
+    obstacle_trajs.emplace_back(obstacle_traj);
+  }
+
+  return obstacle_trajs;
+}
+*/
 }  // namespace fop

@@ -140,8 +140,8 @@ std::pair<FrenetState, double> getFrenet(const VehicleState& current_state, cons
 
   // std::cout << "getFrenet() Break 2" << std::endl;
 
-  std::cout << "n_x = " << n_x << std::endl;
-  std::cout << "n_y = " << n_y << std::endl;
+  //std::cout << "n_x = " << n_x << std::endl;
+  //std::cout << "n_y = " << n_y << std::endl;
   // find the projection of x on n
   const double proj_norm = (x_x * n_x + x_y * n_y) / (n_x * n_x + n_y * n_y);
   const double proj_x = proj_norm * n_x;
@@ -153,7 +153,7 @@ std::pair<FrenetState, double> getFrenet(const VehicleState& current_state, cons
   // get the normal std::vector d
   const double wp_yaw = path.yaw[prev_wp_id];
   const double delta_yaw = fop::unifyAngleRange(current_state.yaw - wp_yaw);
-
+  /*
   std::cout << "current x-position of the robot: " << current_state.x << std::endl;
   std::cout << "current y-position of the robot: " << current_state.y << std::endl;
   std::cout << "orientation of the robot: " << current_state.yaw << std::endl;
@@ -161,7 +161,7 @@ std::pair<FrenetState, double> getFrenet(const VehicleState& current_state, cons
   std::cout << "orientation of the path: " << wp_yaw << std::endl;
   std::cout << "r_x = " << path.x[prev_wp_id] << std::endl;
   std::cout << "r_y = " << path.y[prev_wp_id] << std::endl;
-
+  */
 
   // std::cout << "getFrenet() Break 3" << std::endl;
 
@@ -176,7 +176,7 @@ std::pair<FrenetState, double> getFrenet(const VehicleState& current_state, cons
 
   double deviation = ((current_state.x - path.x[prev_wp_id]) * (-1 * std::sin(wp_yaw))) + ((current_state.y - path.y[prev_wp_id]) * (std::cos(wp_yaw)));
   // doesn't matter, both methods return the same value
-  std::cout << "deviation from path, their way: " << state.d << std::endl;
+  //std::cout << "deviation from path, their way: " << state.d << std::endl;
   //std::cout << "deviation from path, my way: " << deviation << std::endl;
 
   
@@ -188,7 +188,7 @@ std::pair<FrenetState, double> getFrenet(const VehicleState& current_state, cons
   }
   state.s += distance(0.0, 0.0, proj_x, proj_y);
   
-  std::cout << "calculated s on the path is: " << state.s << std::endl;
+  // std::cout << "calculated s on the path is: " << state.s << std::endl;
   // calculate s_d and d_d
   state.s_d = current_state.v * cos(delta_yaw);
   state.d_d = current_state.v * sin(delta_yaw);

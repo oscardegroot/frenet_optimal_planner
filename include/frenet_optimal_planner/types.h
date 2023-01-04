@@ -47,11 +47,11 @@ struct Path
 
         // transform from quaternion to RPY angle
         double ysqr = pose.orientation.y * pose.orientation.y;
-		double t3 = +2.0 * (pose.orientation.w * pose.orientation.z + pose.orientation.x * pose.orientation.y);
-		double t4 = +1.0 - 2.0 * (ysqr + pose.orientation.z * pose.orientation.z);
+        double t3 = +2.0 * (pose.orientation.w * pose.orientation.z + pose.orientation.x * pose.orientation.y);
+        double t4 = +1.0 - 2.0 * (ysqr + pose.orientation.z * pose.orientation.z);
         double angle = atan2(t3, t4);
         psi_.push_back(angle);
-        //psi_.push_back(Helpers::quaternionToAngle(pose));
+        // psi_.push_back(Helpers::quaternionToAngle(pose));
     }
 
     void Clear()
@@ -244,3 +244,4 @@ protected:
 };
 
 #endif // __TYPES_H__
+

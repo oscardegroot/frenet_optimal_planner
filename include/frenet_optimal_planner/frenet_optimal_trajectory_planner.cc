@@ -52,8 +52,8 @@ namespace fop
   std::vector<double> FrenetOptimalTrajectoryPlanner::TestResult::updateCount(const std::vector<int> numbers, const std::vector<std::chrono::_V2::system_clock::time_point> timestamps,
                                                                               const double fix_cost, const double dyn_cost, const double dist)
   {
-    //std::cout << "the length is: " << this->length << std::endl;
-    //std::cout << "the numbers size is: " << numbers.size() << std::endl;
+    // std::cout << "the length is: " << this->length << std::endl;
+    // std::cout << "the numbers size is: " << numbers.size() << std::endl;
     if (numbers.size() != this->length || timestamps.size() != this->length + 1)
     {
       std::cout << "Recorded TestResult for this planning iteration is invalid" << std::endl;
@@ -124,26 +124,25 @@ namespace fop
     */
 
     // Print Summary for Worst Case performance
-      /*
-      std::cout << " " << std::endl;
-      std::cout << "Summary: Worst Case Performance (" << count << " iterations so far)" << std::endl;
-      std::cout << "Step 1 : Generated               " << this->numbers_max[0] << " End States   in " << this->time_max[0] << " ms" << std::endl;
-      std::cout << "Step 2 : Generated & Evaluated   " << this->numbers_max[1] << " Trajectories in " << this->time_max[1] << " ms" << std::endl;
-      std::cout << "Step 3 : Validated               " << this->numbers_max[2] << " Trajectories in " << this->time_max[2] << " ms" << std::endl;
-      std::cout << "Total  : Planning Took           " << this->time_max[4] << " ms (or " << 1000 / this->time_max[4] << " Hz)" << std::endl;
-      // Print Summary for average performance
-      std::cout << " " << std::endl;
-      std::cout << "Summary: Average Performance (" << this->count << " planning cycles so far)" << std::endl;
-      std::cout << "Step 1 : Generated               " << this->total_numbers[0] / this->count << " End States in " << this->total_time[0] / this->count << " ms" << std::endl;
-      std::cout << "Step 2 : Generated & Evaluated   " << this->total_numbers[1] / this->count << " Trajectories in " << this->total_time[1] / this->count << " ms" << std::endl;
-      std::cout << "Step 3 : Validated               " << this->total_numbers[2] / this->count << " Trajectories in " << this->total_time[2] / this->count << " ms" << std::endl;
-      std::cout << "Total  : Planning Took           " << this->total_time[4] / this->count << " ms (or " << 1000 / (this->total_time[4] / this->count) << " Hz)" << std::endl;
-      std::cout << "Cost   : Optimal's Fix Cost      " << this->total_fix_cost / count << std::endl;
-      std::cout << "Cost   : Optimal's Dyn Cost      " << this->total_dyn_cost / count << std::endl;
-      std::cout << "Cost   : Optimal's Total Cost    " << (this->total_fix_cost + this->total_dyn_cost) / count << std::endl;
-      std::cout << "Dist   : Distance to History Best" << this->total_dist / count << std::endl;
-      */
-    
+    /*
+    std::cout << " " << std::endl;
+    std::cout << "Summary: Worst Case Performance (" << count << " iterations so far)" << std::endl;
+    std::cout << "Step 1 : Generated               " << this->numbers_max[0] << " End States   in " << this->time_max[0] << " ms" << std::endl;
+    std::cout << "Step 2 : Generated & Evaluated   " << this->numbers_max[1] << " Trajectories in " << this->time_max[1] << " ms" << std::endl;
+    std::cout << "Step 3 : Validated               " << this->numbers_max[2] << " Trajectories in " << this->time_max[2] << " ms" << std::endl;
+    std::cout << "Total  : Planning Took           " << this->time_max[4] << " ms (or " << 1000 / this->time_max[4] << " Hz)" << std::endl;
+    // Print Summary for average performance
+    std::cout << " " << std::endl;
+    std::cout << "Summary: Average Performance (" << this->count << " planning cycles so far)" << std::endl;
+    std::cout << "Step 1 : Generated               " << this->total_numbers[0] / this->count << " End States in " << this->total_time[0] / this->count << " ms" << std::endl;
+    std::cout << "Step 2 : Generated & Evaluated   " << this->total_numbers[1] / this->count << " Trajectories in " << this->total_time[1] / this->count << " ms" << std::endl;
+    std::cout << "Step 3 : Validated               " << this->total_numbers[2] / this->count << " Trajectories in " << this->total_time[2] / this->count << " ms" << std::endl;
+    std::cout << "Total  : Planning Took           " << this->total_time[4] / this->count << " ms (or " << 1000 / (this->total_time[4] / this->count) << " Hz)" << std::endl;
+    std::cout << "Cost   : Optimal's Fix Cost      " << this->total_fix_cost / count << std::endl;
+    std::cout << "Cost   : Optimal's Dyn Cost      " << this->total_dyn_cost / count << std::endl;
+    std::cout << "Cost   : Optimal's Total Cost    " << (this->total_fix_cost + this->total_dyn_cost) / count << std::endl;
+    std::cout << "Dist   : Distance to History Best" << this->total_dist / count << std::endl;
+    */
   }
 
   FrenetOptimalTrajectoryPlanner::FrenetOptimalTrajectoryPlanner()
@@ -307,7 +306,7 @@ namespace fop
       std::cout << "number of generated trajectories is: " << num_trajs_generated << std::endl;
       std::cout << "number of validated trajectories is: " << num_trajs_validated << std::endl;
     }
-    
+
     if (best_traj_found && prev_best_traj_.is_generated) // ensure the previous best exists
     {
       fix_cost = best_traj_.fix_cost;
@@ -321,7 +320,7 @@ namespace fop
         }
       }
     }
-    
+
     if (settings_.enable_debug == true)
     {
       std::cout << "fop: Search Done in " << num_iter << " iterations" << std::endl;
@@ -974,7 +973,7 @@ namespace fop
 
         // use Jackal radius instead of vehicle's width and length
         double robot_radius = 0.325;
-        double obstacle_radius = 0.3;
+        double obstacle_radius = 0.5;
         double safety_distance = 0.1;
 
         double obstacle_x_pos;

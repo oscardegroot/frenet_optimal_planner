@@ -290,7 +290,7 @@ namespace fop
       std::cout << "size of local lane is: " << local_lane_.points.size() << std::endl;
       std::cout << "x-position of first local lane point: " << local_lane_.points[0].point.x << std::endl;
     }
-    
+
     // Update start state, transofrm current robot's state to Frenet coordinates
     updateStartState();
     // Get the reference lane's centerline as a spline
@@ -302,7 +302,6 @@ namespace fop
     {
       std::cout << "first x-position of reference path is: " << ref_spline_.x[0] << std::endl;
     }
-
 
     if (ref_spline_.x.empty())
     {
@@ -425,7 +424,6 @@ namespace fop
       std::cout << "current robot's velocity is: " << current_state_.v << std::endl;
       std::cout << "averaged velocity is: " << averaged_velocity << std::endl;
     }
-
   }
 
   // This function updates with T=1/clock_frequency
@@ -590,7 +588,7 @@ namespace fop
     data_.dynamic_obstacles_.clear();
 
     int disc_id = 0;
-    double obstacle_radius = 0.3;
+    double obstacle_radius = 0.5;
     for (auto &object : obstacle_msg_.objects)
     {
       data_.dynamic_obstacles_.emplace_back(object.id, disc_id, obstacle_radius); // Radius = according to lmpcc config
@@ -608,7 +606,7 @@ namespace fop
     obstacle_marker.setScale(0.25, 0.25, 1.5);
     obstacle_marker.setColor(0.0, 0.0, 0.0, 0.8);
     double plot_height = 1.5;
-    double obstacle_radius = 0.3;
+    double obstacle_radius = 0.5;
 
     // Plot all obstacles
     for (auto &object : data_.dynamic_obstacles_) // obstacle_msg_.objects)
@@ -724,12 +722,11 @@ namespace fop
     nav_msgs::Path ref_path_msg;
     ref_path_msg.header.stamp = ros::Time::now();
     ref_path_msg.header.frame_id = "map";
-    
+
     if (SETTINGS.enable_debug)
     {
       std::cout << "reference path size in the publisher is: " << path.yaw.size() << std::endl;
     }
-
 
     for (size_t i = 0; i < path.yaw.size(); i++)
     {
@@ -902,7 +899,7 @@ namespace fop
     }
 
     // if reached the end of the lane, stop
-    if ((ros::Time::now() - t_last_reset_).sec > 1.0 && current_state_.x > 20.) // start_id >= (lane_.points.size() - 2)) // exclude last 2 waypoints for safety, and prevent code crashing
+    if ((ros::Time::now() - t_last_reset_).sec > 1.0 && current_state_.x > 32.) // start_id >= (lane_.points.size() - 2)) // exclude last 2 waypoints for safety, and prevent code crashing
     {
       // ROS_WARN("Local Planner: Vehicle is at waypoint no.%d, with %d waypoints in total", start_id, int(lane_.points.size()));
       if (SETTINGS.enable_debug)
@@ -910,7 +907,6 @@ namespace fop
         std::cout << "start_id in the condition: " << start_id << std::endl;
         std::cout << "size of lane points in the condition: " << lane_.points.size() << std::endl;
       }
-
 
       ROS_WARN("Local Planner: Vehicle has reached the destination");
       // reset environment
@@ -945,13 +941,12 @@ namespace fop
 
     // Check if the global waypoints need to be filtered
     const double ref_spline_length = SETTINGS.highest_speed * (SETTINGS.max_t);
-    
+
     if (SETTINGS.enable_debug)
     {
       std::cout << "start_id is: " << start_id << std::endl;
       std::cout << "reference_spline_length_is: " << ref_spline_length << std::endl;
     }
-
 
     if ((lane_.points.back().point.s - lane_.points[start_id].point.s) >= ref_spline_length)
     {
@@ -1040,10 +1035,10 @@ namespace fop
         std::cout << "replan is:  " << replan_ << std::endl;
       }
     }
-    
+
     if (SETTINGS.enable_debug)
     {
-       std::cout << "regenerate_flag_ is: " << regenerate_flag_ << std::endl;
+      std::cout << "regenerate_flag_ is: " << regenerate_flag_ << std::endl;
     }
 
     // if need to regenerate the entire path
@@ -1238,7 +1233,6 @@ namespace fop
         std::cout << "Output Path Size: " << curr_trajectory_.x.size() << " Current Size: " << traj_max_size << " Diff: " << diff
                   << " Next Path Size: " << next_traj.x.size() << std::endl;
       }
-      
 
       // Concatenate the best path to the output path
       for (size_t i = 0; i < diff; i++)
@@ -1313,7 +1307,6 @@ namespace fop
       std::cout << "current x-state is: " << current_state_.x << std::endl;
       std::cout << "current y-state is: " << current_state_.y << std::endl;
     }
-    
 
     // debug
     /*
@@ -1406,11 +1399,9 @@ namespace fop
       control_msg_.angular.z = angular_velocity_;
       command_pub_.publish(control_msg_);
 
-      
       signal_publishers_[0].Publish(acceleration_);
       signal_publishers_[1].Publish(control_msg_.linear.x);
       signal_publishers_[2].Publish(control_msg_.angular.z);
-      
 
       ROS_INFO("Controller: Traget Speed: %2f, Current Speed: %2f, Acceleration: %.2f ", curr_trajectory_.v[wp_id], current_state_.v, acceleration_);
       ROS_INFO("Controller: Cross Track Error: %2f, Yaw Diff: %2f, SteeringAngle: %.2f ", direction * x, fop::rad2deg(delta_yaw), fop::rad2deg(steering_angle_));

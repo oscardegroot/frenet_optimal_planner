@@ -131,19 +131,19 @@ Visualization Manager:
       Value: true
       Visual Enabled: true
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /local_planner/candidate_trajs
       Name: Candidate Trajectories
       Namespaces:
-        candidate: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /lmpcc/collision_space
       Name: Plan
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -199,10 +199,18 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /scenario_constraints/markers
+      Marker Topic: /obstacle_prediction/markers
       Name: Scenario Visuals
       Namespaces:
         {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /pedestrian_simulator/debug
+      Name: MarkerArray
+      Namespaces:
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -218,7 +226,7 @@ Visualization Manager:
       Marker Topic: /lmpcc/reference_path
       Name: Reference Path
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -252,7 +260,7 @@ Visualization Manager:
           Marker Topic: /lmpcc/received_obstacles
           Name: Received Obstacles
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
       Enabled: true

@@ -845,6 +845,7 @@ namespace fop
   bool FrenetOptimalTrajectoryPlanner::checkConstraints(FrenetPath &traj)
   {
     bool passed = true;
+    /*
     for (int i = 0; i < traj.c.size(); i++)
     {
       if (traj.s_d[i] > settings_.max_speed)
@@ -853,6 +854,7 @@ namespace fop
         // std::cout << "Condition 1: Exceeded Max Speed" << std::endl;
         break;
       }
+      
       else if (traj.s_dd[i] > settings_.max_accel)
       {
         passed = false;
@@ -865,14 +867,17 @@ namespace fop
         // std::cout << "Condition 3: Exceeded Max Deceleration" << std::endl;
         break;
       }
-      // else if (std::abs(traj.c[i]) > settings_.max_curvature)
-      // {
-      //   passed = false;
-      //   std::cout << "Condition 4: Exceeded max curvature = " << settings_.max_curvature
-      //             << ". Curr curvature = " << (traj.c[i]) << std::endl;
-      //   break;
-      // }
+      
+      else if (std::abs(traj.c[i]) > settings_.max_curvature)
+      {
+         passed = false;
+         //std::cout << "Condition 4: Exceeded max curvature = " << settings_.max_curvature
+         //          << ". Curr curvature = " << (traj.c[i]) << std::endl;
+         break;
+      }
+      
     }
+    */
 
     traj.constraint_passed = passed;
     return passed;
@@ -973,7 +978,7 @@ namespace fop
 
         // use Jackal radius instead of vehicle's width and length
         double robot_radius = 0.325;
-        double obstacle_radius = 0.5;
+        double obstacle_radius = 0.3;
         double safety_distance = 0.1;
 
         double obstacle_x_pos;

@@ -192,6 +192,8 @@ namespace fop
 
     // visualizes black circles for pedestrians
     obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 20));
+    ros_markers_.reset(new ROSMarkerPublisher(nh, "obstacle_prediction/markers",   "map", 500)); // 3500)); // was 1800
+
     total_exp_time_ = 0.0;
 
     // we can remove this, and call the main function (processreferencepath) from the obstacles callback function
@@ -216,6 +218,72 @@ namespace fop
     lane_ = fop::Lane(global_path, LANE_WIDTH / 2, LANE_WIDTH / 2, LANE_WIDTH / 2 + LEFT_LANE_WIDTH, LANE_WIDTH / 2 + RIGHT_LANE_WIDTH);
     ROS_INFO("Local Planner: Lane Info Received, with %d points, filtered to %d points", int(lane_.points.size()), int(lane_.points.size()));
   }
+
+  void FrenetOptimalPlannerNode::visualizeObstaclePrediction(const lmpcc_msgs::obstacle_array &obstacles_prediction)
+  {
+    ROS_INFO("FOP: Visualizing Obstacles predictions");
+
+    ROSPointMarker &prediction_points = ros_markers_->getNewPointMarker("CYLINDER");
+    prediction_points.setScale(0.15, 0.15, 0.1e-3);
+
+    ROSPointMarker &prediction_circles = ros_markers_->getNewPointMarker("CYLINDER");
+    ROSLine &prediction_trajectories   = ros_markers_->getNewLine();
+
+    double visualization_scale = 1.0;
+    prediction_trajectories.setScale(0.07 * visualization_scale, 0.07 * visualization_scale);
+
+    Eigen::Vector3d current_location, prev_location;
+    double vehicle_radius  = 0.325;
+    double obstacle_radius = 0.3;
+    //double obstacle_x_pos;
+    //double obstacle_y_pos;
+
+    // indices to draw
+    std::vector<int> indices_to_draw{ 0, 5, 10, 15, 19 };
+    //std::vector<int> indices_to_draw{ 0, 19 };
+
+    for (int i = 0; i < obstacles_prediction.obstacles.size(); i++)
+    {
+      std::vector<double> obstacle_x_pos;
+      std::vector<double> obstacle_y_pos;
+      
+      for (int j = 0; j < obstacles_prediction.obstacles[i].gaussians[0].mean.poses.size(); j++)
+      {
+
+
+        for (size_t mode = 0; mode < obstacles_prediction.obstacles[i].gaussians.size(); mode++)
+        {
+          obstacle_x_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.x);
+          obstacle_y_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.y);
+        }
+      }
+        for (size_t k = 0; k < indices_to_draw.size(); k++)
+        {
+          const int &index = indices_to_draw[k];
+          prediction_trajectories.setColorInt(k, (int)indices_to_draw.size());
+          current_location = Eigen::Vector3d(obstacle_x_pos[index], obstacle_y_pos[index], -((double)k) * 0.1e-3);
+          
+          // Draw a connecting line
+          if (k > 0)
+          {
+            prediction_trajectories.addLine(prev_location, current_location);
+          }
+
+          prev_location = current_location;
+          prediction_circles.setScale(
+             2 * (obstacle_radius),  2 * (obstacle_radius), 0.1);
+          
+          prediction_circles.setColorInt(k, indices_to_draw.size(), 0.4);
+          prediction_points.setColorInt(k,  indices_to_draw.size(), 1.0);
+
+          prediction_circles.addPointMarker(current_location);
+          prediction_points.addPointMarker(current_location);
+
+        }
+    }
+
+  }
+
 
   // Update vehicle current state from the tf transform
   void FrenetOptimalPlannerNode::odomCallback(const nav_msgs::Odometry::ConstPtr &odom_msg)
@@ -338,8 +406,8 @@ namespace fop
   for (size_t i = 0; i < lane_.points.size() - 2; i++)
   {
     geometry_msgs::Point p;
-    p.x = lane_.points[i].point.x + SETTINGS.curr_lane_width/2;
-    p.y = lane_.points[i].point.y + SETTINGS.curr_lane_width/2;
+    p.x = lane_.points[i].point.x;
+    p.y = lane_.points[i].point.y + LANE_WIDTH/2;
     p.z = -0.5e-3;
 
     if (i > 0)
@@ -352,8 +420,8 @@ namespace fop
   for (size_t i = 0; i < lane_.points.size() - 2; i++)
   {
     geometry_msgs::Point p;
-    p.x = lane_.points[i].point.x - SETTINGS.curr_lane_width/2;
-    p.y = lane_.points[i].point.y - SETTINGS.curr_lane_width/2;
+    p.x = lane_.points[i].point.x;
+    p.y = lane_.points[i].point.y - LANE_WIDTH/2;
     p.z = -0.5e-3;
 
     if (i > 0)
@@ -371,6 +439,10 @@ namespace fop
       std::cout << "enter the planner" << std::endl;
     }
 
+    visualizeObstaclePrediction(prediction_msg_);
+    ros_markers_->publish();
+
+    
     const auto planning_results = frenet_planner_.frenetOptimalPlanning(ref_path_and_curve.second, start_state_, target_lane_id_,
                                                                         roi_boundaries_[0], roi_boundaries_[1], current_state_.v, CHECK_COLLISION, USE_ASYNC,
                                                                         prediction_msg_, USE_HEURISTIC, curr_trajectory_, r_x_);
@@ -424,6 +496,7 @@ namespace fop
       std::cout << "current robot's velocity is: " << current_state_.v << std::endl;
       std::cout << "averaged velocity is: " << averaged_velocity << std::endl;
     }
+    
   }
 
   // This function updates with T=1/clock_frequency
@@ -588,7 +661,7 @@ namespace fop
     data_.dynamic_obstacles_.clear();
 
     int disc_id = 0;
-    double obstacle_radius = 0.5;
+    double obstacle_radius = 0.3;
     for (auto &object : obstacle_msg_.objects)
     {
       data_.dynamic_obstacles_.emplace_back(object.id, disc_id, obstacle_radius); // Radius = according to lmpcc config
@@ -606,7 +679,7 @@ namespace fop
     obstacle_marker.setScale(0.25, 0.25, 1.5);
     obstacle_marker.setColor(0.0, 0.0, 0.0, 0.8);
     double plot_height = 1.5;
-    double obstacle_radius = 0.5;
+    double obstacle_radius = 0.3;
 
     // Plot all obstacles
     for (auto &object : data_.dynamic_obstacles_) // obstacle_msg_.objects)

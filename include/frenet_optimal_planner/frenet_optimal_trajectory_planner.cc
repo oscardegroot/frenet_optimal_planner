@@ -978,7 +978,7 @@ namespace fop
 
         // use Jackal radius instead of vehicle's width and length
         double robot_radius = 0.325;
-        double obstacle_radius = 0.3;
+        double obstacle_radius = settings_.obstacle_radius;
         double safety_distance = 0.1;
 
         double obstacle_x_pos;

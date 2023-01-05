@@ -45,6 +45,7 @@ namespace fop
     USE_HEURISTIC = config.use_heuristic;
     SETTINGS.tick_t = config.tick_t;
     SETTINGS.enable_debug = config.enable_debug;
+    SETTINGS.replan_all_time = config.replan_all_time;
 
     // Sampling parameters (lateral)
     LANE_WIDTH = config.curr_lane_width;
@@ -86,6 +87,7 @@ namespace fop
     SETTINGS.safety_margin_lon = config.safety_margin_lon;
     SETTINGS.safety_margin_lat = config.safety_margin_lat;
     SETTINGS.safety_margin_soft = config.safety_margin_soft;
+    SETTINGS.obstacle_radius = config.obstacle_radius;
     // PID and Stanley gains
     PID_Kp = config.PID_Kp;
     PID_Ki = config.PID_Ki;
@@ -234,7 +236,7 @@ namespace fop
 
     Eigen::Vector3d current_location, prev_location;
     double vehicle_radius  = 0.325;
-    double obstacle_radius = 0.3;
+    double obstacle_radius = SETTINGS.obstacle_radius;
     //double obstacle_x_pos;
     //double obstacle_y_pos;
 
@@ -661,7 +663,7 @@ namespace fop
     data_.dynamic_obstacles_.clear();
 
     int disc_id = 0;
-    double obstacle_radius = 0.3;
+    double obstacle_radius = SETTINGS.obstacle_radius;
     for (auto &object : obstacle_msg_.objects)
     {
       data_.dynamic_obstacles_.emplace_back(object.id, disc_id, obstacle_radius); // Radius = according to lmpcc config
@@ -679,7 +681,7 @@ namespace fop
     obstacle_marker.setScale(0.25, 0.25, 1.5);
     obstacle_marker.setColor(0.0, 0.0, 0.0, 0.8);
     double plot_height = 1.5;
-    double obstacle_radius = 0.3;
+    double obstacle_radius = SETTINGS.obstacle_radius;
 
     // Plot all obstacles
     for (auto &object : data_.dynamic_obstacles_) // obstacle_msg_.objects)
@@ -1115,7 +1117,7 @@ namespace fop
     }
 
     // if need to regenerate the entire path
-    if (regenerate_flag_)
+    if (regenerate_flag_ || SETTINGS.replan_all_time)
     {
       ROS_INFO("Local Planner: Regenerating The Entire Path...");
       // Update the starting state in frenet (using ref_spline_ can produce a finer result compared to local_lane_, but

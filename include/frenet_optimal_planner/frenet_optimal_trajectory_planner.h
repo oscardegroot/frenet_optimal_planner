@@ -66,6 +66,7 @@ namespace fop
       // General Settings
       double tick_t; // time tick [s]
       bool enable_debug;
+      bool replan_all_time;
 
       // Sampling Parameters
       double center_offset; // offset from the center of the lane [m]
@@ -101,6 +102,7 @@ namespace fop
       double safety_margin_soft; // soft safety margin [ratio]
       double vehicle_width;      // vehicle width [m]
       double vehicle_length;     // vehicle length [m]
+      double obstacle_radius;
     };
 
     class TestResult

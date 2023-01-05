@@ -38,12 +38,12 @@
   <rosparam command="load" file="$(find frenet_optimal_planner)/config/path.yaml"/>
   
   <include file="$(find pedestrian_simulator)/launch/simulation.launch">
-  	 <!-- <arg name="pedestrian_scenario" value="$(arg pedestrian_scenario)"/>
-     <arg name="overwrite_pedestrian_scenario" value="$(arg overwrite_pedestrian_scenario)"/> -->
+  	 <arg name="pedestrian_scenario" value="$(arg pedestrian_scenario)"/>
+     <arg name="overwrite_pedestrian_scenario" value="$(arg overwrite_pedestrian_scenario)"/>
     </include>
 
   <!-- Local Planner -->
-  <node name="frenet_optimal_planner_node" pkg="frenet_optimal_planner" type="frenet_optimal_planner_node" output="screen" required="true">
+  <node name="frenet_optimal_planner_node" pkg="frenet_optimal_planner" type="frenet_optimal_planner_node" output="log" required="true">
     <!-- Input Topic Names -->
     <!-- <param name="odom_topic"                    value="simulator/ground_truth/odom"/> -->
     <param name="odom_topic"                    value="/odometry/filtered"/>

@@ -335,32 +335,32 @@ namespace fop
     }
 
     // left boundaries
-  for (size_t i = 0; i < lane_.points.size() - 2; i++)
-  {
-    geometry_msgs::Point p;
-    p.x = lane_.points[i].point.x + SETTINGS.curr_lane_width/2;
-    p.y = lane_.points[i].point.y + SETTINGS.curr_lane_width/2;
-    p.z = -0.5e-3;
+    for (size_t i = 0; i < lane_.points.size() - 2; i++)
+    {
+      geometry_msgs::Point p;
+      p.x = lane_.points[i].point.x;
+      p.y = lane_.points[i].point.y + LANE_WIDTH / 2;
+      p.z = -0.5e-3;
 
-    if (i > 0)
-      line.addLine(prev_point, p);
-    
-    prev_point = p;
-  }
+      if (i > 0)
+        line.addLine(prev_point, p);
 
-  // right boundaries
-  for (size_t i = 0; i < lane_.points.size() - 2; i++)
-  {
-    geometry_msgs::Point p;
-    p.x = lane_.points[i].point.x - SETTINGS.curr_lane_width/2;
-    p.y = lane_.points[i].point.y - SETTINGS.curr_lane_width/2;
-    p.z = -0.5e-3;
+      prev_point = p;
+    }
 
-    if (i > 0)
-      line.addLine(prev_point, p);
-    
-    prev_point = p;
-  }
+    // right boundaries
+    for (size_t i = 0; i < lane_.points.size() - 2; i++)
+    {
+      geometry_msgs::Point p;
+      p.x = lane_.points[i].point.x;
+      p.y = lane_.points[i].point.y - LANE_WIDTH / 2;
+      p.z = -0.5e-3;
+
+      if (i > 0)
+        line.addLine(prev_point, p);
+
+      prev_point = p;
+    }
 
     ros_markers_reference_path_->publish();
     publishRefSpline(ref_spline_);

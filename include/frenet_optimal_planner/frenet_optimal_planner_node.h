@@ -165,6 +165,8 @@ namespace fop
     std::unique_ptr<ROSMarkerPublisher> ros_markers_reference_path_;
     std::unique_ptr<ROSMarkerPublisher> collision_space_markers_;
     std::unique_ptr<ROSMarkerPublisher> obstacle_markers_;
+    std::unique_ptr<ROSMarkerPublisher> ros_markers_; // For visualizing obstacle's predictions
+
 
     boost::shared_ptr<frenet_planner_configuration> config_;
 
@@ -209,6 +211,9 @@ namespace fop
 
     void runNode(const ros::TimerEvent &event);
     void visualizeTraj(const fop::FrenetPath &best_traj);
+
+    void visualizeObstaclePrediction(const lmpcc_msgs::obstacle_array &obstacles_prediction);
+
 
     // Oscar: Added functionality below
     /** @brief Reset when the end of the path is reached */

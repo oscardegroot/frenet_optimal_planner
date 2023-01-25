@@ -35,6 +35,7 @@ namespace fop
   bool USE_HEURISTIC;
 
   bool SETTINGS_UPDATED = false;
+  bool EXPORT_DATA = false;
 
   // Dynamic parameter server callback function
   void dynamicParamCallback(frenet_optimal_planner::frenet_optimal_planner_Config &config, uint32_t level)
@@ -45,6 +46,7 @@ namespace fop
     USE_HEURISTIC = config.use_heuristic;
     SETTINGS.tick_t = config.tick_t;
     SETTINGS.enable_debug = config.enable_debug;
+    SETTINGS.replan_all_time = config.replan_all_time;
 
     // Sampling parameters (lateral)
     LANE_WIDTH = config.curr_lane_width;
@@ -86,6 +88,7 @@ namespace fop
     SETTINGS.safety_margin_lon = config.safety_margin_lon;
     SETTINGS.safety_margin_lat = config.safety_margin_lat;
     SETTINGS.safety_margin_soft = config.safety_margin_soft;
+    SETTINGS.obstacle_radius = config.obstacle_radius;
     // PID and Stanley gains
     PID_Kp = config.PID_Kp;
     PID_Ki = config.PID_Ki;
@@ -192,6 +195,8 @@ namespace fop
 
     // visualizes black circles for pedestrians
     obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 20));
+    ros_markers_.reset(new ROSMarkerPublisher(nh, "obstacle_prediction/markers", "map", 500)); // 3500)); // was 1800
+
     total_exp_time_ = 0.0;
 
     // we can remove this, and call the main function (processreferencepath) from the obstacles callback function
@@ -215,6 +220,68 @@ namespace fop
 
     lane_ = fop::Lane(global_path, LANE_WIDTH / 2, LANE_WIDTH / 2, LANE_WIDTH / 2 + LEFT_LANE_WIDTH, LANE_WIDTH / 2 + RIGHT_LANE_WIDTH);
     ROS_INFO("Local Planner: Lane Info Received, with %d points, filtered to %d points", int(lane_.points.size()), int(lane_.points.size()));
+  }
+
+  void FrenetOptimalPlannerNode::visualizeObstaclePrediction(const lmpcc_msgs::obstacle_array &obstacles_prediction)
+  {
+    ROS_INFO("FOP: Visualizing Obstacles predictions");
+
+    ROSPointMarker &prediction_points = ros_markers_->getNewPointMarker("CYLINDER");
+    prediction_points.setScale(0.15, 0.15, 0.1e-3);
+
+    ROSPointMarker &prediction_circles = ros_markers_->getNewPointMarker("CYLINDER");
+    ROSLine &prediction_trajectories = ros_markers_->getNewLine();
+
+    double visualization_scale = 1.0;
+    prediction_trajectories.setScale(0.07 * visualization_scale, 0.07 * visualization_scale);
+
+    Eigen::Vector3d current_location, prev_location;
+    double vehicle_radius = 0.325;
+    double obstacle_radius = SETTINGS.obstacle_radius;
+    // double obstacle_x_pos;
+    // double obstacle_y_pos;
+
+    // indices to draw
+    std::vector<int> indices_to_draw{0, 5, 10, 15, 19};
+    // std::vector<int> indices_to_draw{ 0, 19 };
+
+    for (int i = 0; i < obstacles_prediction.obstacles.size(); i++)
+    {
+      std::vector<double> obstacle_x_pos;
+      std::vector<double> obstacle_y_pos;
+
+      for (int j = 0; j < obstacles_prediction.obstacles[i].gaussians[0].mean.poses.size(); j++)
+      {
+
+        for (size_t mode = 0; mode < obstacles_prediction.obstacles[i].gaussians.size(); mode++)
+        {
+          obstacle_x_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.x);
+          obstacle_y_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.y);
+        }
+      }
+      for (size_t k = 0; k < indices_to_draw.size(); k++)
+      {
+        const int &index = indices_to_draw[k];
+        prediction_trajectories.setColorInt(k, (int)indices_to_draw.size());
+        current_location = Eigen::Vector3d(obstacle_x_pos[index], obstacle_y_pos[index], -((double)k) * 0.1e-3);
+
+        // Draw a connecting line
+        if (k > 0)
+        {
+          prediction_trajectories.addLine(prev_location, current_location);
+        }
+
+        prev_location = current_location;
+        prediction_circles.setScale(
+            2 * (obstacle_radius), 2 * (obstacle_radius), 0.1);
+
+        prediction_circles.setColorInt(k, indices_to_draw.size(), 0.4);
+        prediction_points.setColorInt(k, indices_to_draw.size(), 1.0);
+
+        prediction_circles.addPointMarker(current_location);
+        prediction_points.addPointMarker(current_location);
+      }
+    }
   }
 
   // Update vehicle current state from the tf transform
@@ -370,6 +437,9 @@ namespace fop
     {
       std::cout << "enter the planner" << std::endl;
     }
+
+    visualizeObstaclePrediction(prediction_msg_);
+    ros_markers_->publish();
 
     const auto planning_results = frenet_planner_.frenetOptimalPlanning(ref_path_and_curve.second, start_state_, target_lane_id_,
                                                                         roi_boundaries_[0], roi_boundaries_[1], current_state_.v, CHECK_COLLISION, USE_ASYNC,
@@ -537,7 +607,7 @@ namespace fop
     int num_experiments = 15;
 
     // Save every x experiments
-    if (experiment_counter_ % num_experiments == 0)
+    if (EXPORT_DATA && experiment_counter_ % num_experiments == 0)
       data_saver_.SaveData(recording_name + "_frenet-planner");
 
     experiment_counter_++;
@@ -588,7 +658,7 @@ namespace fop
     data_.dynamic_obstacles_.clear();
 
     int disc_id = 0;
-    double obstacle_radius = 0.5;
+    double obstacle_radius = SETTINGS.obstacle_radius;
     for (auto &object : obstacle_msg_.objects)
     {
       data_.dynamic_obstacles_.emplace_back(object.id, disc_id, obstacle_radius); // Radius = according to lmpcc config
@@ -606,7 +676,7 @@ namespace fop
     obstacle_marker.setScale(0.25, 0.25, 1.5);
     obstacle_marker.setColor(0.0, 0.0, 0.0, 0.8);
     double plot_height = 1.5;
-    double obstacle_radius = 0.5;
+    double obstacle_radius = SETTINGS.obstacle_radius;
 
     // Plot all obstacles
     for (auto &object : data_.dynamic_obstacles_) // obstacle_msg_.objects)
@@ -636,6 +706,9 @@ namespace fop
   {
     // data_saver_.SetAddTimestamp(true);
 
+    if (!EXPORT_DATA)
+      return;
+
     ROS_INFO("ExportData()");
 
     // Don't export if the obstacles aren't ready
@@ -662,6 +735,7 @@ namespace fop
 
     // OBSTACLES
     int collisions = 0;
+    double max_intrusion = 0.;
     for (size_t v = 0; v < data_.dynamic_obstacles_.size(); v++)
     {
       auto &obstacle = data_.dynamic_obstacles_[v];
@@ -689,12 +763,13 @@ namespace fop
       // std::cout << (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius << std::endl;
       if ((vehicle_pose - pose).norm() < obstacle.discs_[0].radius_ + 0.325 - 1e-2)
       {
-        // std::cout << "dist to collision boundary: " << (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius << std::endl;
-        ROS_WARN("Collision Detected");
+        double intrusion = -((vehicle_pose - pose).norm() - obstacle.discs_[0].radius_ - 0.325);
+        ROS_WARN_STREAM("Collision Detected. Intrusion: " << intrusion << "m");
         collisions++;
-        // data_saver_.AddData("collision_intrusion", (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius);
+        max_intrusion = std::max(intrusion, max_intrusion);
       }
     }
+    data_saver_.AddData("max_intrusion", max_intrusion);
     data_saver_.AddData("metric_collisions", collisions);
 
     data_saver_.AddData("iteration", control_iteration_);
@@ -1042,7 +1117,7 @@ namespace fop
     }
 
     // if need to regenerate the entire path
-    if (regenerate_flag_)
+    if (regenerate_flag_ || SETTINGS.replan_all_time)
     {
       ROS_INFO("Local Planner: Regenerating The Entire Path...");
       // Update the starting state in frenet (using ref_spline_ can produce a finer result compared to local_lane_, but
@@ -1339,6 +1414,8 @@ namespace fop
       // std::cout << "Output Path Size: " << curr_trajectory_.x.size() << " Required Size: " << wp_id + 2 << std::endl;
       regenerate_flag_ = true;
       // replan_ = true;
+      ExportData();
+
       return false;
     }
     else
@@ -1354,6 +1431,8 @@ namespace fop
         ROS_WARN("Local Planner: two points overlapped, Regenerate");
         regenerate_flag_ = true;
         // replan_ = true;
+        ExportData();
+
         return false;
       }
       const double a = fop::distance(frontaxle_state.x, frontaxle_state.y, curr_trajectory_.x[wp_id], curr_trajectory_.y[wp_id]);
@@ -1364,6 +1443,8 @@ namespace fop
         ROS_WARN("Local Planner: Vehicle is too far from the path, Regenerate");
         regenerate_flag_ = true;
         // replan_ = true;
+        ExportData();
+
         return false;
       }
 
@@ -1406,6 +1487,7 @@ namespace fop
       ROS_INFO("Controller: Traget Speed: %2f, Current Speed: %2f, Acceleration: %.2f ", curr_trajectory_.v[wp_id], current_state_.v, acceleration_);
       ROS_INFO("Controller: Cross Track Error: %2f, Yaw Diff: %2f, SteeringAngle: %.2f ", direction * x, fop::rad2deg(delta_yaw), fop::rad2deg(steering_angle_));
       ExportData();
+
       return true;
     }
   }

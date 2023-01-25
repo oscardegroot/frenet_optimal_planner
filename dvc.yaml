@@ -23,7 +23,7 @@ stages:
         #   - recording.number_of_experiments
         - config/path.yaml:
           - global_path.x
-        - config/configuration.yaml:
+        - ../pedestrian_simulator/config/configuration.yaml:
           - pedestrian_simulator.pedestrians.seed
           - pedestrian_simulator.pedestrians.process_noise
       outs:

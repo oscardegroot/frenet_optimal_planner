@@ -60,6 +60,8 @@
   <build_depend>autoware_msgs</build_depend>
   <build_depend>visualization_msgs</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>eigen_conversions</build_depend>
+  <build_depend>roslib</build_depend>
 
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
@@ -70,6 +72,8 @@
   <build_export_depend>autoware_msgs</build_export_depend>
   <build_export_depend>visualization_msgs</build_export_depend>
   <build_export_depend>dynamic_reconfigure</build_export_depend>
+  <build_export_depend>eigen_conversions</build_export_depend>
+  <build_export_depend>roslib</build_export_depend>
 
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
@@ -81,6 +85,8 @@
   <exec_depend>autoware_msgs</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
   <exec_depend>dynamic_reconfigure</exec_depend>
+  <exec_depend>eigen_conversions</exec_depend>
+  <exec_depend>roslib</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
@@ -88,3 +94,4 @@
 
   </export>
 </package>
+

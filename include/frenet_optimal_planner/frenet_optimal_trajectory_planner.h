@@ -27,11 +27,32 @@
 #include <frenet_optimal_planner/ObservedRisk.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Float32.h>
+
 
 
 
 // #define TRUE_SIZE_LENGTH 3
 // #define TRUE_SIZE_MARGIN 0.3
+
+class SignalPublisher
+{
+public:
+  SignalPublisher(ros::NodeHandle &nh, const std::string &signal_name)
+  {
+    pub_ = nh.advertise<std_msgs::Float32>("/frenet_optimal_planner/" + signal_name, 1); /* Publish the sample size when it is incorrect */
+  }
+
+  void Publish(double signal_value)
+  {
+    msg.data = signal_value;
+    pub_.publish(msg);
+  }
+
+private:
+  ros::Publisher pub_;
+  std_msgs::Float32 msg;
+};
 
 namespace fop
 {
@@ -47,6 +68,8 @@ class FrenetOptimalTrajectoryPlanner
 
     // General Settings
     double tick_t;              // time tick [s]
+    bool enable_debug;
+    bool replan_all_time;
 
     // Sampling Parameters
     double center_offset;       // offset from the center of the lane [m]
@@ -82,6 +105,7 @@ class FrenetOptimalTrajectoryPlanner
     double safety_margin_soft;  // soft safety margin [ratio]
     double vehicle_width;       // vehicle width [m]
     double vehicle_length;      // vehicle length [m]
+    double obstacle_radius;
   };
 
   class TestResult
@@ -101,11 +125,6 @@ class FrenetOptimalTrajectoryPlanner
     double total_fix_cost, total_dyn_cost;
     double total_dist;
 
-   
-
-
-    // std::vector<double> cost_history;
-    // std::vector<double> dist_history;
 
     TestResult();
     TestResult(const int length);
@@ -138,6 +157,7 @@ class FrenetOptimalTrajectoryPlanner
                                                      const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async, 
                                                      const lmpcc_msgs::obstacle_array& obstacles, const bool use_heuristic, fop::Path& curr_traj, double r_x_,  ros::ServiceClient risk_planned_traj_client);
 
+ 
   std::vector<FrenetPath> all_trajs_;
   std::shared_ptr<std::vector<fop::FrenetPath>> all_trajs_fop_;
 
@@ -152,27 +172,12 @@ private:
   FrenetState start_state_;
   SATCollisionChecker sat_collision_checker_;
 
-  std::vector<std::vector<std::vector<FrenetPath>>> sampleEndStates(const int lane_id, const double left_bound, 
-                                                                    const double right_bound, const double current_speed, 
-                                                                    const bool use_heuristic);
-
-  // Find the best init guess based on end states
-  bool findInitGuess(const std::vector<std::vector<std::vector<FrenetPath>>>& trajs, Eigen::Vector3i& idx);
-  // Explore trajectories
-  bool findNextBest(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, Eigen::Vector3i& idx, int& num_traj);
-  Eigen::Vector3d findGradients(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, const Eigen::Vector3i& idx, int& num_traj);
-  Eigen::Vector3i findDirection(const Eigen::Vector3i& sizes, const Eigen::Vector3i& idx);
-
-  // Generate this candidate trajectory and compute the real(final) cost
-  double getTrajAndRealCost(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, const Eigen::Vector3i& idx, int& num_traj);
-  
   // Sample candidate trajectories
   std::vector<fop::FrenetPath> generateFrenetPaths(const fop::FrenetState& frenet_state, const int lane_id,
                                                    const double left_bound, const double right_bound, const double current_speed);
 
   // Convert paths from frenet frame to gobal map frame
   int calculateGlobalPaths(std::vector<fop::FrenetPath>& frenet_traj_list, fop::Spline2D& cubic_spline, double r_x);
-  void convertToGlobalFrame(FrenetPath& traj, Spline2D& cubic_spline);
   // Compute costs for candidate trajectories
   int computeCosts(std::vector<fop::FrenetPath>& frenet_trajs, const double curr_speed);
 

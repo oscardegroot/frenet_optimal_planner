@@ -2,7 +2,7 @@
 #define ROS_VISUALS_H
 
 #include <ros/ros.h>
-#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <tf/tf.h>
 
 // Visualization messages
@@ -46,8 +46,8 @@ public:
 
     ROSLine &getNewLine();
     ROSPointMarker &getNewPointMarker(const std::string &marker_type);
-    ROSMultiplePointMarker &getNewMultiplePointMarker(const std::string &marker_type); //const std::string &marker_type);
-    //ROSEllipse& getNewEllipse();
+    ROSMultiplePointMarker &getNewMultiplePointMarker(const std::string &marker_type); // const std::string &marker_type);
+    // ROSEllipse& getNewEllipse();
 
     void publish();
 

@@ -19,6 +19,8 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_broadcaster.h>
+
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
 
@@ -36,6 +38,7 @@
 #include "frenet_optimal_planner/frenet_planner_configuration.h"
 
 #include <frenet_optimal_planner/ros_visuals.h>
+#include <frenet_optimal_planner/data_saver.h>
 #include <frenet_optimal_planner/types.h>
 #include <frenet_optimal_planner/dynamic_obstacle.h>
 
@@ -49,10 +52,19 @@
 #include <numeric>
 #include <frenet_optimal_planner/ObservedRisk.h>
 
-
+#define CONTROL_FREQUENCY 20.0
 
 namespace fop
 {
+  // Oscar
+  inline double quaternionToAngle(const geometry_msgs::Pose &pose)
+  {
+    double ysqr = pose.orientation.y * pose.orientation.y;
+    double t3 = +2.0 * (pose.orientation.w * pose.orientation.z + pose.orientation.x * pose.orientation.y);
+    double t4 = +1.0 - 2.0 * (ysqr + pose.orientation.z * pose.orientation.z);
+
+    return atan2(t3, t4);
+  }
 
 class FrenetOptimalPlannerNode
 {
@@ -69,6 +81,9 @@ class FrenetOptimalPlannerNode
   // Regnerate path flag
   bool regenerate_flag_;
   bool replan_ = false;
+  //Oscar
+  bool state_received_ = false;
+
 
   // Lane related variables
   int current_lane_id_;
@@ -81,6 +96,10 @@ class FrenetOptimalPlannerNode
 
   double angular_velocity_;
   double current_angular_velocity_;
+
+  // Oscar
+  ros::Time t_last_reset_;
+  int control_iteration_ = 0, iteration_at_last_reset_ = 0, experiment_counter_ = 0;
 
   // Vehicle's current state
   fop::VehicleState current_state_;    // State of the vehicle baselink
@@ -97,6 +116,10 @@ class FrenetOptimalPlannerNode
   std::vector<double> roi_boundaries_;  //[0] = left boundary length in metre, [1] = right boundary length in metre.
   
   std::vector<float> vehicle_vel_;
+  // Oscar
+  double total_exp_time_;
+  std::vector<float> duration_per_iteration_;
+
   // Controllers
   control::PID pid_;
 
@@ -115,6 +138,11 @@ class FrenetOptimalPlannerNode
   ros::Publisher sample_space_pub;
   ros::Publisher final_traj_pub;
   ros::Publisher candidate_paths_pub;
+
+  // Oscar: Additions. Comment it for now.
+  std::vector<SignalPublisher> signal_publishers_; /* Mainly intended for publishing control signals to be visualized by jsk_rviz_plugins */
+  tf2_ros::TransformBroadcaster path_pose_pub_;
+  
 
   // To reset the environment after each experiment
   ros::Publisher reset_simulation_pub_;
@@ -146,6 +174,8 @@ class FrenetOptimalPlannerNode
   std::unique_ptr<ROSMarkerPublisher> ros_markers_reference_path_;
   std::unique_ptr<ROSMarkerPublisher> collision_space_markers_;
   std::unique_ptr<ROSMarkerPublisher> obstacle_markers_;
+  std::unique_ptr<ROSMarkerPublisher> ros_markers_;
+
 
 
 
@@ -175,6 +205,7 @@ class FrenetOptimalPlannerNode
   void publishRefSpline(const fop::Path& path);
   void publishCurrTraj(const fop::Path& path);
   void publishNextTraj(const fop::FrenetPath& next_traj);
+  void publishVehicleCmd(const double accel, const double angle);
   void publishCandidateTrajs(const std::vector<fop::FrenetPath>& candidate_trajs);
 
   // Planner Helper Functions
@@ -196,6 +227,17 @@ class FrenetOptimalPlannerNode
   void runNode(const ros::TimerEvent &event);
   void visualizeTraj(const fop::FrenetPath& best_traj);
 
+  void visualizeObstaclePrediction(const lmpcc_msgs::obstacle_array &obstacles_prediction);
+
+  // Oscar: Added functionality below
+  /** @brief Reset when the end of the path is reached */
+  void Reset();
+
+  void ActuateBrake(double deceleration);
+
+
+  DataSaver data_saver_;
+  void ExportData();
 };
 
 } // namespace fop

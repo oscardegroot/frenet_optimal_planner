@@ -44,6 +44,9 @@ void dynamicParamCallback(frenet_optimal_planner::frenet_optimal_planner_Config&
   USE_ASYNC = config.use_async;
   USE_HEURISTIC = config.use_heuristic;
   SETTINGS.tick_t = config.tick_t;
+  SETTINGS.enable_debug = config.enable_debug;
+  SETTINGS.replan_all_time = config.replan_all_time;
+
 
   // Sampling parameters (lateral)
   LANE_WIDTH = config.curr_lane_width;
@@ -85,6 +88,7 @@ void dynamicParamCallback(frenet_optimal_planner::frenet_optimal_planner_Config&
   SETTINGS.safety_margin_lon = config.safety_margin_lon;
   SETTINGS.safety_margin_lat = config.safety_margin_lat;
   SETTINGS.safety_margin_soft = config.safety_margin_soft;
+  SETTINGS.obstacle_radius = config.obstacle_radius;
   // PID and Stanley gains
   PID_Kp = config.PID_Kp;
   PID_Ki = config.PID_Ki;
@@ -194,16 +198,23 @@ FrenetOptimalPlannerNode::FrenetOptimalPlannerNode() : tf_listener(tf_buffer)
 
 
   // visualizes black circles for pedestrians
-  obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 20));                             
+  obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 20)); 
+  ros_markers_.reset(new ROSMarkerPublisher(nh, "obstacle_prediction/markers",   "map", 500)); // 3500)); // was 1800                            
   
-
+  total_exp_time_ = 0.0;
 
   // we can remove this, and call the main function (processreferencepath) from the obstacles callback function
-  timer_ = nh.createTimer(ros::Duration(1.0 / 20), &FrenetOptimalPlannerNode::runNode, this);
+  timer_ = nh.createTimer(ros::Duration(1.0 / CONTROL_FREQUENCY), &FrenetOptimalPlannerNode::runNode, this);
  
 
   //vehicle_cmd_pub = nh.advertise<autoware_msgs::VehicleCmd>(vehicle_cmd_topic, 1);
   //obstacles_pub   = nh.advertise<autoware_msgs::DetectedObjectArray>("local_planner/objects", 1);
+
+  
+  signal_publishers_.emplace_back(nh, "acceleration"); // For JSK visualization
+  signal_publishers_.emplace_back(nh, "velocity");     // For JSK visualization
+  signal_publishers_.emplace_back(nh, "rot_velocity"); // For JSK visualization
+  
 
   // Initializing states
   regenerate_flag_ = false;
@@ -217,6 +228,72 @@ void FrenetOptimalPlannerNode::laneInfoCallback(const nav_msgs::Path::ConstPtr& 
   lane_ = fop::Lane(global_path, LANE_WIDTH/2, LANE_WIDTH/2, LANE_WIDTH/2 + LEFT_LANE_WIDTH, LANE_WIDTH/2 + RIGHT_LANE_WIDTH);
   ROS_INFO("Local Planner: Lane Info Received, with %d points, filtered to %d points", int(lane_.points.size()), int(lane_.points.size()));
 }
+
+void FrenetOptimalPlannerNode::visualizeObstaclePrediction(const lmpcc_msgs::obstacle_array &obstacles_prediction)
+{
+  ROS_INFO("FOP: Visualizing Obstacles predictions");
+
+  ROSPointMarker &prediction_points = ros_markers_->getNewPointMarker("CYLINDER");
+  prediction_points.setScale(0.15, 0.15, 0.1e-3);
+
+  ROSPointMarker &prediction_circles = ros_markers_->getNewPointMarker("CYLINDER");
+  ROSLine &prediction_trajectories   = ros_markers_->getNewLine();
+
+  double visualization_scale = 1.0;
+  prediction_trajectories.setScale(0.07 * visualization_scale, 0.07 * visualization_scale);
+
+  Eigen::Vector3d current_location, prev_location;
+  double vehicle_radius  = 0.325;
+  double obstacle_radius = SETTINGS.obstacle_radius;
+    //double obstacle_x_pos;
+    //double obstacle_y_pos;
+
+    // indices to draw
+  std::vector<int> indices_to_draw{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+    //std::vector<int> indices_to_draw{ 0, 19 };
+
+  for (int i = 0; i < obstacles_prediction.obstacles.size(); i++)
+  {
+    for (size_t mode = 0; mode < obstacles_prediction.obstacles[i].gaussians.size(); mode++)
+    {
+        
+      std::vector<double> obstacle_x_pos;
+      std::vector<double> obstacle_y_pos;
+
+      for (int j = 0; j < obstacles_prediction.obstacles[i].gaussians[mode].mean.poses.size(); j++)
+      {
+        obstacle_x_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.x);
+        obstacle_y_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.y);
+          
+      }
+      
+      
+      for (size_t k = 0; k < indices_to_draw.size(); k++)
+      {
+        const int &index = indices_to_draw[k];
+        prediction_trajectories.setColorInt(k, (int)indices_to_draw.size());
+        current_location = Eigen::Vector3d(obstacle_x_pos[index], obstacle_y_pos[index], -((double)k) * 0.1e-3);
+          
+          // Draw a connecting line
+        if (k > 0)
+        {
+          prediction_trajectories.addLine(prev_location, current_location);
+        }
+
+        prev_location = current_location;
+        prediction_circles.setScale(2 * (obstacle_radius),  2 * (obstacle_radius), 0.1);
+          
+        prediction_circles.setColorInt(k, indices_to_draw.size(), 0.4);
+        prediction_points.setColorInt(k,  indices_to_draw.size(), 1.0);
+
+        prediction_circles.addPointMarker(current_location);
+        prediction_points.addPointMarker(current_location);
+      }
+    }
+  }
+
+}
+
 
 // Update vehicle current state from the tf transform
 void FrenetOptimalPlannerNode::odomCallback(const nav_msgs::Odometry::ConstPtr& odom_msg)
@@ -249,6 +326,23 @@ void FrenetOptimalPlannerNode::odomCallback(const nav_msgs::Odometry::ConstPtr& 
   double roll, pitch;
   m.getRPY(roll, pitch, current_state_.yaw);
 
+  // Plots a Axis to display the path variable location
+  // Oscar
+  geometry_msgs::TransformStamped transformStamped;
+  transformStamped.header.stamp = ros::Time::now();
+  transformStamped.header.frame_id = "map";
+  transformStamped.child_frame_id = "robot_state";
+
+  transformStamped.transform.translation.x = current_state_.x;
+  transformStamped.transform.translation.y = 0.; // solver_interface_ptr_->State().y();
+  transformStamped.transform.translation.z = 0.0;
+  transformStamped.transform.rotation.x = 0;
+  transformStamped.transform.rotation.y = 0;
+  transformStamped.transform.rotation.z = 0;
+  transformStamped.transform.rotation.w = 1;
+
+  path_pose_pub_.sendTransform(transformStamped);
+
   //std::cout << "robot's x-position" << current_state_.x << std::endl;
   //std::cout << "robot's y-position" << current_state_.y << std::endl;
   //std::cout << "robot's orientation" << current_state_.yaw << std::endl;
@@ -270,8 +364,12 @@ void FrenetOptimalPlannerNode::processreferencepath()
     return;
   }
 
-  std::cout << "size of local lane is: " << local_lane_.points.size() << std::endl;
-  std::cout << "x-position of first local lane point: " << local_lane_.points[0].point.x << std::endl;
+  if (SETTINGS.enable_debug == true)
+  {
+    std::cout << "size of local lane is: " << local_lane_.points.size() << std::endl;
+    std::cout << "x-position of first local lane point: " << local_lane_.points[0].point.x << std::endl;
+  }
+
   // Update start state, transofrm current robot's state to Frenet coordinates
   updateStartState();
   // Get the reference lane's centerline as a spline
@@ -279,8 +377,10 @@ void FrenetOptimalPlannerNode::processreferencepath()
   // Store the results into reference spline
   ref_spline_ = std::move(ref_path_and_curve.first);
 
-  std::cout << "first x-position of reference path is: " << ref_spline_.x[0] << std::endl;
-
+  if (SETTINGS.enable_debug == true)
+  {
+    std::cout << "first x-position of reference path is: " << ref_spline_.x[0] << std::endl;
+  }
   if (ref_spline_.x.empty())
   {
     ROS_ERROR("Local Planner: Reference Curve could not be be generated, No path generated");
@@ -317,15 +417,33 @@ void FrenetOptimalPlannerNode::processreferencepath()
 
   // std::cout << "the defined boundaries are" << roi_boundaries_[0] << std::endl;
 
+  // debug start_state
+  if (SETTINGS.enable_debug == true)
+  {
+    std::cout << "start longitudinal position" << start_state_.s << std::endl;
+    std::cout << "start longitudinal speed" << start_state_.s_d << std::endl;
+    std::cout << "start lateral position" << start_state_.d << std::endl;
+    std::cout << "start lateral speed" << start_state_.d_d << std::endl;
+    std::cout << "start lateral acceleration" << start_state_.d_dd << std::endl;
+  }
+  
+
+    visualizeObstaclePrediction(prediction_msg_);
+    ros_markers_->publish();
+  
    
   // Get the planning result 
   std::vector<fop::FrenetPath> best_traj_list = frenet_planner_.frenetOptimalPlanning(ref_path_and_curve.second, start_state_, target_lane_id_, 
                                                                                       roi_boundaries_[0], roi_boundaries_[1], current_state_.v, CHECK_COLLISION, USE_ASYNC, 
                                                                                       prediction_msg_, USE_HEURISTIC, curr_trajectory_, r_x_, risk_planned_traj_client_);
   
+  
   if (best_traj_list.empty())
   {
     ROS_ERROR("Local Planner: Frenet Optimal Planning Could Not Find a Safe Trajectory");
+    // ToDo
+    // publishEmptyTrajsAndStop();
+    ActuateBrake(3.0);
   }
   
   
@@ -341,7 +459,6 @@ void FrenetOptimalPlannerNode::processreferencepath()
 
   // Publish the best trajs
   publishRefSpline(ref_spline_);
-  // publishCandidateTrajs(frenet_planner_.all_trajs);
   publishCandidateTrajs(*frenet_planner_.all_trajs_fop_);
   publishCurrTraj(curr_trajectory_);
   publishNextTraj(best_traj);
@@ -354,8 +471,11 @@ void FrenetOptimalPlannerNode::processreferencepath()
   // just for debugging purposes
   vehicle_vel_.push_back(current_state_.v);
   float averaged_velocity = std::accumulate(vehicle_vel_.begin(), vehicle_vel_.end(), 0.0) / vehicle_vel_.size();
-  std::cout << "current robot's velocity is: " << current_state_.v << std::endl;
-  std::cout << "averaged velocity is: " << averaged_velocity << std::endl;
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "current robot's velocity is: " << current_state_.v << std::endl;
+    std::cout << "averaged velocity is: " << averaged_velocity << std::endl;
+  }
 }
 
 // This function updates with T=1/clock_frequency
@@ -388,7 +508,11 @@ void FrenetOptimalPlannerNode::visualizeTraj(const fop::FrenetPath& next_traj)
   fop::Path vis_traj = curr_trajectory_;
   if (next_traj.x.size() != 0)
   {
-    std::cout << "The replan flag is: " << replan_ << std::endl;
+    if (SETTINGS.enable_debug)
+    {
+      std::cout << "The replan flag is: " << replan_ << std::endl;
+    }
+
     if (replan_ == false)
     {
       for (int i = 0; i < (next_traj.x.size() - curr_trajectory_.x.size()) - 1; i++)
@@ -428,7 +552,11 @@ void FrenetOptimalPlannerNode::visualizeTraj(const fop::FrenetPath& next_traj)
   }
   
   replan_ = false;
-  std::cout << "visualized trajectory size is: " << vis_traj.x.size() << std::endl;
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "visualized trajectory size is: " << vis_traj.x.size() << std::endl;
+  }
+  
   for (size_t k = 0; k < vis_traj.x.size(); k++)
   {
     //std::cout << "visualized trajectory x-position is: " << vis_traj.x[k] << std::endl;
@@ -442,13 +570,58 @@ void FrenetOptimalPlannerNode::visualizeTraj(const fop::FrenetPath& next_traj)
   }
 
   collision_space_markers_->publish();
-  /*
-  const auto output_traj_marker = CollisionDetectorVisualization::visualizePredictedTrajectory(
-    vis_traj, SETTINGS.vehicle_width, 0.0, map_height_, current_state_, true, marker_id, "final", Visualization::COLOR::GREEN, 0.15);
-  
-  final_traj_pub.publish(output_traj_marker);
-  */
 }
+
+  void FrenetOptimalPlannerNode::Reset()
+  {
+    ROS_WARN("Resetting...");
+
+    data_saver_.AddData("reset", control_iteration_); // Add a reset flag to the last data point
+    data_saver_.AddData("metric_duration", (control_iteration_ - iteration_at_last_reset_) * (1.0 / CONTROL_FREQUENCY));
+    iteration_at_last_reset_ = control_iteration_;
+
+    // Figure out what the name of our recording should be
+    std::string recording_name;
+    ROS_ASSERT(nh.getParam("pedestrian_simulator/node/scenario", recording_name));
+    std::string segment; // If the name is a file name, remove the file extension
+    std::getline(std::stringstream(recording_name), segment, '.');
+    std::replace(segment.begin(), segment.end(), '/', '-'); // replace all '/' with '-'
+    recording_name = segment;
+
+    int num_experiments = 15;
+
+    // Save every x experiments
+    if (experiment_counter_ % num_experiments == 0)
+      data_saver_.SaveData(recording_name + "_frenet-planner");
+
+    experiment_counter_++;
+
+    if (experiment_counter_ >= num_experiments + 1)
+    {
+      ROS_WARN("Completed the given number of experiments. I know it looks like an error, but it is actually a feature ;)"); // Stop when done with the given number of experiments (+1 for first simulation)
+    }
+    assert(experiment_counter_ < num_experiments + 1);
+
+    // data_saver_.SaveData(recording_name + "_frenet-planner");
+    ROS_WARN("Saving data...");
+
+    for (int j = 0; j < 5; j++)
+    {
+      ActuateBrake(3.0);
+      ros::Duration(1.0 / CONTROL_FREQUENCY).sleep();
+    }
+
+    std_srvs::Empty reset_msg_;
+    robot_localization::SetPose reset_pose_msg_;
+
+    reset_simulation_client_.call(reset_msg_);
+    reset_ekf_client_.call(reset_pose_msg_);
+    reset_simulation_pub_.publish(std_msgs::Empty());
+
+    ros::Duration(1.0 / CONTROL_FREQUENCY).sleep();
+    state_received_ = false;
+    ROS_INFO("Reset completed.");
+  }
 
 void FrenetOptimalPlannerNode::obstacleCallback(const derived_object_msgs::ObjectArray &msg)
 {
@@ -463,25 +636,6 @@ void FrenetOptimalPlannerNode::obstacleTrajectoryPredictionsCallback(const lmpcc
   // this msg includes the trajectory prediction for each obstacle's gaussian mode along prediction horizon
   prediction_msg_ = msg;
   //processreferencepath();
-
-
-  //debug
-  // iterate over obstacles
-  /*
-  for (size_t v = 0; v < msg.obstacles.size(); v++)
-  {
-    // iterate over number of gaussian modes associated to this obstacle
-    for (size_t mode = 0; mode < msg.obstacles[v].gaussians.size(); mode++)
-    {
-      // iterate over prediction stages
-      for (size_t stage = 0; stage < msg.obstacles[v].gaussians[mode].mean.poses.size(); stage++)
-      {
-        std::cout << "object x-prediction: " << msg.obstacles[v].gaussians[mode].mean.poses[stage].pose.position.x << std::endl;
-        std::cout << "object y-prediction: " << msg.obstacles[v].gaussians[mode].mean.poses[stage].pose.position.y << std::endl;
-      }
-    }
-  }
-  */
 }
 
 
@@ -490,7 +644,7 @@ void FrenetOptimalPlannerNode::CreateObstacleList()
   data_.dynamic_obstacles_.clear();
 
   int disc_id = 0;
-  double obstacle_radius = 0.3;
+  double obstacle_radius = SETTINGS.obstacle_radius;
   for (auto &object : obstacle_msg_.objects)
   {
       data_.dynamic_obstacles_.emplace_back(object.id, disc_id, obstacle_radius); // Radius = according to lmpcc config
@@ -508,7 +662,7 @@ void FrenetOptimalPlannerNode::PlotAllObstacles()
   obstacle_marker.setScale(0.25, 0.25, 1.5);
   obstacle_marker.setColor(0.0, 0.0, 0.0, 0.8);
   double plot_height = 1.5;
-  double obstacle_radius = 0.3;
+  double obstacle_radius = SETTINGS.obstacle_radius;
 
   // Plot all obstacles
   for (auto &object : data_.dynamic_obstacles_) // obstacle_msg_.objects)
@@ -524,16 +678,101 @@ void FrenetOptimalPlannerNode::PlotAllObstacles()
 
   obstacle_markers_->publish();
 }
-/*
-void FrenetOptimalPlannerNode::Reset()
+
+void FrenetOptimalPlannerNode::ActuateBrake(double deceleration)
 {
-  
-  reset_simulation_client_.call(reset_msg_);
-  reset_ekf_client_.call(reset_pose_msg_);
-  reset_simulation_pub_.publish(std_msgs::Empty());
-  
+  control_msg_ = geometry_msgs::Twist();
+
+  control_msg_.linear.x = std::max(current_state_.v - deceleration * SETTINGS.tick_t, 0.);
+  control_msg_.angular.z = angular_velocity_;
+  command_pub_.publish(control_msg_);
 }
-*/
+
+ void FrenetOptimalPlannerNode::ExportData()
+  {
+    // data_saver_.SetAddTimestamp(true);
+
+    ROS_INFO("ExportData()");
+
+    // Don't export if the obstacles aren't ready
+    if (data_.dynamic_obstacles_.size() == 0)
+    {
+      ROS_INFO("Not exporting data: Obstacles not yet received.");
+      return;
+    }
+
+    if (!state_received_)
+    {
+      ROS_INFO("Not exporting data: State not yet received.");
+      return;
+    }
+    // VEHICLE
+    Eigen::Vector2d vehicle_pose(current_state_.x, current_state_.y);
+    double vehicle_orientation = current_state_.yaw;
+
+    data_saver_.AddData("vehicle_pose", vehicle_pose);
+    data_saver_.AddData("vehicle_orientation", vehicle_orientation);
+
+    data_saver_.AddData("longitudinal_velocity", current_state_.v);
+    data_saver_.AddData("lateral_velocity", current_angular_velocity_);
+
+    // OBSTACLES
+    int collisions = 0;
+    for (size_t v = 0; v < data_.dynamic_obstacles_.size(); v++)
+    {
+      auto &obstacle = data_.dynamic_obstacles_[v];
+
+      // POSE AND ORIENTATION
+      Eigen::Vector2d pose(obstacle.pose_.position.x, obstacle.pose_.position.y); // Can be outdated!
+      double orientation = quaternionToAngle(obstacle.pose_);
+
+      // CARLA / Real Jackal
+      if (obstacle.id_ != -1)
+      {
+        data_saver_.AddData("obstacle_map_" + std::to_string(v), obstacle.id_);
+        data_saver_.AddData("obstacle_" + std::to_string(obstacle.id_) + "_pose", pose);
+        // data_saver_.AddData("obstacle_" + std::to_string(obstacle.id_) + "_orientation", orientation);
+      }
+      // DISCS
+      for (auto &disc : obstacle.discs_)
+      {
+        data_saver_.AddData("disc_" + std::to_string(disc.id_) + "_pose", disc.TranslateToDisc(pose, orientation));
+        data_saver_.AddData("disc_" + std::to_string(disc.id_) + "_radius", disc.radius_); // Write with the correct id?
+        // data_saver_.AddData("disc_" + std::to_string(disc.id) + "_obstacle", v);
+      }
+
+      // Check for collisions (simple distance check for one disc robot, one disc obstacle)
+      // std::cout << (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius << std::endl;
+      if ((vehicle_pose - pose).norm() < obstacle.discs_[0].radius_ + 0.325 - 1e-2)
+      {
+        // std::cout << "dist to collision boundary: " << (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius << std::endl;
+        ROS_WARN("Collision Detected");
+        collisions++;
+        // data_saver_.AddData("collision_intrusion", (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius);
+      }
+    }
+    data_saver_.AddData("metric_collisions", collisions);
+
+    data_saver_.AddData("iteration", control_iteration_);
+    control_iteration_++;
+
+    /*
+      data_saver_.AddData("runtime_modules", module_benchmarkers_.getLast());
+      data_saver_.AddData("runtime_optimization", optimization_benchmarker_.getLast());*/
+
+    // data_saver_.AddData("collision", system_interface_->collision_detected_); // Collisions from simulation
+    // system_interface_->collision_detected_ = false;
+
+    // Reset if time out
+    // if ((double)(control_iteration_ - iteration_at_last_reset_) * (1.0 / ((double)config_->clock_frequency_)) > config_->time_out_)
+    // {
+    //     std::cout << "RESETTING BECAUSE OF TIME OUT\n";
+    //     OnReset();
+    //     iteration_at_last_reset_ = control_iteration_;
+    // }
+  }
+
+
 
 // Publish the reference spline (for Rviz only)
 void FrenetOptimalPlannerNode::publishRefSpline(const fop::Path& path)
@@ -619,6 +858,7 @@ void FrenetOptimalPlannerNode::publishEmptyTrajsAndStop()
   publishRefSpline(fop::Path());
   publishCurrTraj(fop::Path());
   publishNextTraj(fop::FrenetPath());
+  publishVehicleCmd(-1.0, 0.0);
 
   // actuate braking since we cannot find a safe trajectory to follow
   /*
@@ -713,22 +953,29 @@ bool FrenetOptimalPlannerNode::feedWaypoints()
 
   int start_id = fop::lastWaypoint(current_state_, lane_);
 
-  std::cout << "start_id: " << start_id << std::endl;
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "start_id: " << start_id << std::endl;
+  }
+
   if (start_id < 0)
   {
     start_id = 0;
   }
 
   // if reached the end of the lane, stop
-  if (start_id >= (lane_.points.size() - 2))  // exclude last 2 waypoints for safety, and prevent code crashing
+  if ((ros::Time::now() - t_last_reset_).sec > 1.0 && current_state_.x > 20.) //(start_id >= (lane_.points.size() - 2))  // exclude last 2 waypoints for safety, and prevent code crashing
   {
     // ROS_WARN("Local Planner: Vehicle is at waypoint no.%d, with %d waypoints in total", start_id, int(lane_.points.size()));
-    std::cout << "start_id in the condition: " << start_id << std::endl;
-    std::cout << "size of lane points in the condition: " << lane_.points.size() << std::endl;
+    if (SETTINGS.enable_debug)
+    {
+      std::cout << "start_id in the condition: " << start_id << std::endl;
+      std::cout << "size of lane points in the condition: " << lane_.points.size() << std::endl;
+    }
 
     ROS_WARN("Local Planner: Vehicle has reached the destination");
     // reset environment
-    // Reset();
+    Reset();
     return false;
   }
 
@@ -754,11 +1001,15 @@ bool FrenetOptimalPlannerNode::feedWaypoints()
   {
     start_id = lane_.points.size() - 5;
   }
-  
-  std::cout << "start_id is: " << start_id << std::endl;
+
   // Check if the global waypoints need to be filtered
   const double ref_spline_length = SETTINGS.highest_speed*(SETTINGS.max_t);
-  std::cout << "reference_spline_length_is: " << ref_spline_length << std::endl;
+  
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "start_id is: " << start_id << std::endl;
+    std::cout << "reference_spline_length_is: " << ref_spline_length << std::endl;
+  }
 
   
   if ((lane_.points.back().point.s - lane_.points[start_id].point.s) >= ref_spline_length)
@@ -785,7 +1036,11 @@ bool FrenetOptimalPlannerNode::feedWaypoints()
   {
     // feed the new waypoints
     ROS_INFO("Local Planner: Global reference path only has %f meters left", lane_.points.back().point.s - lane_.points[start_id].point.s);
-    std::cout << "size of lane points: " << lane_.points.size() << std::endl;
+    if (SETTINGS.enable_debug)
+    {
+      std::cout << "size of lane points: " << lane_.points.size() << std::endl;
+    }
+    
     if ((lane_.points.size() - start_id) >= 5)
     {
       const int first_id = start_id;                            // 0
@@ -807,6 +1062,19 @@ bool FrenetOptimalPlannerNode::feedWaypoints()
     }
   }
 
+  // debug
+  /*
+  for (int index = 0; index < lane_.points.size(); index++)
+  {
+      std::cout << "lane points: " << lane_.points[index].point.x << std::endl;
+  }
+
+  for (int index = 0; index < local_lane_.points.size(); index++)
+  {
+      std::cout << "local_lane points: " << local_lane_.points[index].point.x << std::endl;
+  }
+  */
+
   return true;
 }
 
@@ -819,18 +1087,27 @@ void FrenetOptimalPlannerNode::updateStartState()
   }
 
   // if the current path size is too small, regenerate
-  std::cout << "current trajectory size is: " << curr_trajectory_.x.size() << std::endl;
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "current trajectory size is: " << curr_trajectory_.x.size() << std::endl;
+  }
+
   if (curr_trajectory_.x.size() < TRAJ_MIN_SIZE)
   {
     regenerate_flag_ = true;
-    //replan_ = true;
-    std::cout << "replan is:  " << replan_ << std::endl;
+    if (SETTINGS.enable_debug)
+    {
+      std::cout << "replan is:  " << replan_ << std::endl;
+    }
   }
 
-  std::cout << "regenerate_flag_ is: " << regenerate_flag_ << std::endl;
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "regenerate_flag_ is: " << regenerate_flag_ << std::endl;
+  }
 
   // if need to regenerate the entire path
-  if (regenerate_flag_)
+  if (regenerate_flag_ || SETTINGS.replan_all_time)
   {
     ROS_INFO("Local Planner: Regenerating The Entire Path...");
     // Update the starting state in frenet (using ref_spline_ can produce a finer result compared to local_lane_, but
@@ -1060,11 +1337,23 @@ void FrenetOptimalPlannerNode::concatPath(const fop::FrenetPath& next_traj, cons
     updateVehicleFrontAxleState();
     const int next_frontlink_wp_id = fop::nextWaypoint(frontaxle_state_, curr_trajectory_);
     // Calculate Control Outputs
-    calculateControlOutput(next_frontlink_wp_id, frontaxle_state_);
-    
+    if (calculateControlOutput(next_frontlink_wp_id, frontaxle_state_))
+    {
+      // Publish steering angle
+      publishVehicleCmd(acceleration_, steering_angle_);
+    }
+    else
+    {
+      ROS_ERROR("Local Planner: No output steering angle");
+      publishVehicleCmd(-1.0, 0.0); // Publish empty control output
+    }
 
     const int next_wp_id = fop::nextWaypoint(current_state_, curr_trajectory_);
-    std::cout << "next_wp_id is: " << next_wp_id << std::endl;
+    if (SETTINGS.enable_debug)
+    {
+        std::cout << "next_wp_id is: " << next_wp_id << std::endl;
+    }
+    
     for (size_t i = 0; i < next_wp_id; i++)
     {
       curr_trajectory_.x.erase(curr_trajectory_.x.begin());
@@ -1079,8 +1368,26 @@ void FrenetOptimalPlannerNode::concatPath(const fop::FrenetPath& next_traj, cons
   }
 
   // debug output trajectory
-  std::cout << "next trajectory size is: " << next_traj.x.size() << std::endl;
-  std::cout << "current x-state is: " << current_state_.x << std::endl; 
+  if (SETTINGS.enable_debug)
+  {
+    std::cout << "next trajectory size is: " << next_traj.x.size() << std::endl;
+    std::cout << "current x-state is: " << current_state_.x << std::endl;
+    std::cout << "current y-state is: " << current_state_.y << std::endl;
+  }
+
+  //debug
+  /*
+  for (size_t i = 0; i < next_traj.x.size(); i++)
+  {
+    std::cout << "x-position of the next trajectory is: " << next_traj.x[i] << std::endl;
+  }
+
+  for (size_t i = 0; i < curr_trajectory_.x.size(); i++)
+  {
+    std::cout << "x-position of current trajectory is: " << curr_trajectory_.x[i] << std::endl;
+  }
+  */
+  
 }
 
 // Steering Help Function
@@ -1091,7 +1398,11 @@ bool FrenetOptimalPlannerNode::calculateControlOutput(const int next_wp_id, cons
   // If the current path is too short, return error value
   if (curr_trajectory_.x.size() < wp_id + 2)
   {
-    std::cout << "size of output path is: " << curr_trajectory_.x.size() << std::endl;
+    if (SETTINGS.enable_debug)
+    {
+      std::cout << "size of output path is: " << curr_trajectory_.x.size() << std::endl;
+    }
+
     ROS_ERROR("Local Planner: Output Path Too Short! No output steering angle");
     // std::cout << "Output Path Size: " << curr_trajectory_.x.size() << " Required Size: " << wp_id + 2 << std::endl;
     regenerate_flag_ = true;
@@ -1155,13 +1466,29 @@ bool FrenetOptimalPlannerNode::calculateControlOutput(const int next_wp_id, cons
     control_msg_.linear.x  = curr_trajectory_.v[wp_id];
     control_msg_.angular.z = angular_velocity_;
     command_pub_.publish(control_msg_);
-
+    
+    signal_publishers_[0].Publish(acceleration_);
+    signal_publishers_[1].Publish(control_msg_.linear.x);
+    signal_publishers_[2].Publish(control_msg_.angular.z);
     
 
     ROS_INFO("Controller: Traget Speed: %2f, Current Speed: %2f, Acceleration: %.2f ", curr_trajectory_.v[wp_id], current_state_.v, acceleration_);
     ROS_INFO("Controller: Cross Track Error: %2f, Yaw Diff: %2f, SteeringAngle: %.2f ", direction*x, fop::rad2deg(delta_yaw), fop::rad2deg(steering_angle_));
+    ExportData();
     return true;
   }
+}
+
+// Publish the resulted steering angle (Stanley)
+void FrenetOptimalPlannerNode::publishVehicleCmd(const double accel, const double angle)
+{
+  /*
+  autoware_msgs::VehicleCmd vehicle_cmd;
+  vehicle_cmd.twist_cmd.twist.linear.x = accel/fop::Vehicle::max_acceleration();  // [pct]
+  vehicle_cmd.twist_cmd.twist.angular.z = angle;                                  // [rad]
+  vehicle_cmd.gear_cmd.gear = autoware_msgs::Gear::DRIVE;
+  vehicle_cmd_pub.publish(vehicle_cmd);
+  */
 }
 
 } // namespace fop

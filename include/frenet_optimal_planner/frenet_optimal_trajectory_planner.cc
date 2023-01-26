@@ -226,6 +226,7 @@ FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_splin
   {
     traj_debug = candidate_trajs_debug.top();
     candidate_trajs_debug.pop();
+
   }
 
   int traj_number = 0;
@@ -271,6 +272,30 @@ FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_splin
         best_traj_found = true;
         std::cout << "the number of best traj is: " << traj_number << std::endl;
       }
+      if (settings_.enable_debug)
+      {
+        std::cout << "best traj starting x-position: " << best_traj_.x[0] << std::endl;
+        std::cout << "best traj starting y-position: " << best_traj_.y[0] << std::endl;
+        std::cout << "best traj starting s-position: " << best_traj_.s[0] << std::endl;
+        std::cout << "best traj starting d-position: " << best_traj_.d[0] << std::endl;
+        std::cout << "best traj starting r_x: " << best_traj_.r_x[0] << std::endl;
+        std::cout << "best traj starting r_y: " << best_traj_.r_y[0] << std::endl;
+        std::cout << "best traj starting r_yaw: " << best_traj_.r_yaw[0] << std::endl;
+        std::cout << "best traj shifted: " << best_traj_.shifted << std::endl;
+      }
+
+
+
+
+      /*
+      std::cout << "best trajectory found" << std::endl;
+      std::cout << "traj. lateral cost: " << best_traj_.lat_cost << std::endl;
+      std::cout << "traj. speed cost: " << best_traj_.speed_cost << std::endl;
+      std::cout << "traj. time cost: " << best_traj_.time_cost << std::endl;
+      std::cout << "traj. fix cost: " << best_traj_.fix_cost << std::endl;
+      std::cout << "traj. dyn cost: " << best_traj_.dyn_cost << std::endl;
+      std::cout << "traj. final cost: " << best_traj_.final_cost << std::endl;
+      */
       break;
     }
   }
@@ -300,8 +325,11 @@ FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_splin
   {
     prev_best_traj_ = best_traj_;
     prev_best_idx_ = best_traj_.idx;
-
-    std::cout << "start position of traj. of the robot: " << best_traj_.x[0] << std::endl;
+    
+    if (settings_.enable_debug)
+    {
+      std::cout << "start position of traj. of the robot: " << best_traj_.x[0] << std::endl;
+    }
     
     return std::vector<FrenetPath>{1, best_traj_};
   }
@@ -310,295 +338,6 @@ FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D& cubic_splin
     ROS_ERROR("Local Planner: No valid trajectory is obtained");
     return std::vector<FrenetPath>{};
   }
-}
-
-/**
- * @brief Checks whether frenet paths are safe to execute based on constraints 
- * @param trajs the 3D Cube of trajectories
- * @param idx the index of the lowest estimated cost trajectory
- * @return true if there are still trajs not searched before, false otherwise
- */
-bool FrenetOptimalTrajectoryPlanner::findInitGuess(const std::vector<std::vector<std::vector<FrenetPath>>>& trajs, Eigen::Vector3i& idx)
-{
-  double min_cost = std::numeric_limits<double>::max();
-  bool found = false;
-
-  // find the index of the traj with the lowest estimated cost
-  for (int i = 0; i < trajs.size(); i++)
-  {
-    for (int j = 0; j < trajs[0].size(); j++)
-    {
-      for (int k = 0; k < trajs[0][0].size(); k++)
-      {  
-        if (!trajs[i][j][k].is_searched && trajs[i][j][k].est_cost < min_cost)
-        {
-          min_cost = trajs[i][j][k].est_cost;
-          idx(0) = i;
-          idx(1) = j;
-          idx(2) = k;
-          found = true;
-        }
-      }
-    }
-  }
-
-  return found;
-}
-
-bool FrenetOptimalTrajectoryPlanner::findNextBest(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, Eigen::Vector3i& idx, int& num_traj)
-{
-  if (trajs[idx(0)][idx(1)][idx(2)].is_searched)
-  {
-    // std::cout << "FNB: At Current idx " << idx(0) << idx(1) << idx(2) << " converged" << std::endl;
-    return true; // converged
-  }
-  else
-  {
-    // std::cout << "FNB: At Current idx " << idx(0) << idx(1) << idx(2) << " not converged" << std::endl;
-    trajs[idx(0)][idx(1)][idx(2)].is_searched = true; // label this traj as searched
-    const auto gradients = findGradients(trajs, idx, num_traj);
-
-    int grad_dim = 0;
-    double max_grad = gradients(0);
-    for (int i = 1; i < 3; i++)
-    {
-      if (std::abs(gradients(i)) > std::abs(max_grad))
-      {
-        grad_dim = i;
-        max_grad = gradients(i);
-      }
-    }
-
-    idx(grad_dim) += max_grad > 0? -1 : 1; // move in the max gradient direction, towards lower cost
-    
-    return false; // not converged
-  }
-}
-
-Eigen::Vector3d FrenetOptimalTrajectoryPlanner::findGradients(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, const Eigen::Vector3i& idx, int& num_traj)
-{
-  const Eigen::Vector3i sizes = {int(trajs.size()), int(trajs[0].size()), int(trajs[0][0].size())};
-  const Eigen::Vector3i directions = findDirection(sizes, idx);
-
-  // Center sample location which we want to find the gradient
-  const double cost_center = getTrajAndRealCost(trajs, idx, num_traj);
-
-  // Compute the gradients at each direction
-  Eigen::Vector3d gradients;
-  for (int dim = 0; dim < 3; dim++)
-  {
-    Eigen::Vector3i next_idx = idx;
-    next_idx(dim) += directions(dim);
-    if (directions(dim) >= 0) // the right side has neighbor
-    {
-      gradients(dim) = getTrajAndRealCost(trajs, next_idx, num_traj) - cost_center;
-      if (gradients(dim) >= 0 && idx(dim) == 0) // the right neighbor has higher cost and there is no neighbor on the left side
-      {
-        gradients(dim) = 0.0; // set the gradient to zero
-      }
-    }
-    else // the right side has no neighbor, calculate gradient using the left neighbor
-    {
-      gradients(dim) = cost_center - getTrajAndRealCost(trajs, next_idx, num_traj);
-      if (gradients(dim) <= 0 && idx(dim) == sizes(dim)-1) // the left neighbor has higher cost and there is no neighbor on the right side
-      {
-        gradients(dim) = 0.0; // set the gradient to zero
-      }
-    }
-  }
-
-  return gradients;
-}
-
-Eigen::Vector3i FrenetOptimalTrajectoryPlanner::findDirection(const Eigen::Vector3i& sizes, const Eigen::Vector3i& idx)
-{
-  Eigen::Vector3i directions;
-  for (int dim = 0; dim < 3; dim++)
-  {
-    if (idx(dim) >= sizes(dim)-1)
-    {
-      directions(dim) = -1;
-    }
-    else
-    {
-      directions(dim) = +1;
-    }
-  }
-
-  return directions;
-}
-
-double FrenetOptimalTrajectoryPlanner::getTrajAndRealCost(std::vector<std::vector<std::vector<FrenetPath>>>& trajs, const Eigen::Vector3i& idx, int& num_traj)
-{
-  const int i = idx(0);  // width dimension
-  const int j = idx(1);  // speed dimension
-  const int k = idx(2);  // time  dimension
-  
-  if (trajs[i][j][k].is_generated)
-  {
-    return trajs[i][j][k].final_cost;
-  }
-  else
-  {
-    num_traj++;
-    trajs[i][j][k].is_generated = true;
-    trajs[i][j][k].idx = idx;
-    
-    // calculate the costs
-    double jerk_s, jerk_d = 0.0;
-    double jerk_sqr_s, jerk_sqr_d = 0.0;
-
-    // generate lateral quintic polynomial
-    QuinticPolynomial lateral_quintic_poly = QuinticPolynomial(start_state_, trajs[i][j][k].end_state);
-
-    // store the this lateral trajectory into traj
-    for (double t = 0.0; t <= trajs[i][j][k].end_state.T; t += settings_.tick_t)
-    {
-      trajs[i][j][k].t.emplace_back(t);
-      trajs[i][j][k].d.emplace_back(lateral_quintic_poly.calculatePoint(t));
-      trajs[i][j][k].d_d.emplace_back(lateral_quintic_poly.calculateFirstDerivative(t));
-      trajs[i][j][k].d_dd.emplace_back(lateral_quintic_poly.calculateSecondDerivative(t));
-      trajs[i][j][k].d_ddd.emplace_back(lateral_quintic_poly.calculateThirdDerivative(t));
-      jerk_sqr_d += std::pow(trajs[i][j][k].d_ddd.back()/settings_.max_jerk_d, 2);
-      jerk_d += std::abs(trajs[i][j][k].d_ddd.back()/settings_.max_jerk_d);
-    }
-
-    // generate longitudinal quartic polynomial
-    QuarticPolynomial longitudinal_quartic_poly = QuarticPolynomial(start_state_, trajs[i][j][k].end_state);
-
-    // store the this longitudinal trajectory into traj
-    for (double t = 0.0; t <= trajs[i][j][k].end_state.T; t += settings_.tick_t)
-    {
-      trajs[i][j][k].s.emplace_back(longitudinal_quartic_poly.calculatePoint(t));
-      trajs[i][j][k].s_d.emplace_back(longitudinal_quartic_poly.calculateFirstDerivative(t));
-      trajs[i][j][k].s_dd.emplace_back(longitudinal_quartic_poly.calculateSecondDerivative(t));
-      trajs[i][j][k].s_ddd.emplace_back(longitudinal_quartic_poly.calculateThirdDerivative(t));
-      jerk_sqr_s += std::pow(trajs[i][j][k].s_ddd.back()/settings_.max_jerk_s, 2);
-      jerk_s += std::abs(trajs[i][j][k].s_ddd.back()/settings_.max_jerk_s);
-    }
-
-    const double jerk_cost_s = jerk_sqr_s/jerk_s;
-    const double jerk_cost_d = jerk_sqr_d/jerk_d;
-    
-    trajs[i][j][k].dyn_cost = settings_.k_jerk * (settings_.k_lon * jerk_cost_s + settings_.k_lat * jerk_cost_d);
-    trajs[i][j][k].final_cost = trajs[i][j][k].fix_cost + trajs[i][j][k].dyn_cost;
-
-    // Add this trajectory to the candidate queue
-    all_trajs_.push_back(trajs[i][j][k]);
-    candidate_trajs_.push(trajs[i][j][k]);
-
-    return trajs[i][j][k].final_cost;
-  }
-}
-
-void FrenetOptimalTrajectoryPlanner::convertToGlobalFrame(FrenetPath& traj, Spline2D& cubic_spline)
-{
-  // calculate global positions
-  for (int j = 0; j < traj.s.size(); j++)
-  {
-    VehicleState state = cubic_spline.calculatePosition(traj.s[j]);
-    double i_yaw = cubic_spline.calculateYaw(traj.s[j]);
-    const double di = traj.d[j];
-    const double frenet_x = state.x + di * cos(i_yaw + M_PI / 2.0);
-    const double frenet_y = state.y + di * sin(i_yaw + M_PI / 2.0);
-    if (!isLegal(frenet_x) || !isLegal(frenet_y))
-    {
-      break;
-    }
-    else
-    {
-      traj.x.emplace_back(frenet_x);
-      traj.y.emplace_back(frenet_y);
-    }
-  }
-  // calculate yaw and ds
-  for (int j = 0; j < traj.x.size() - 1; j++)
-  {
-    const double dx = traj.x[j+1] - traj.x[j];
-    const double dy = traj.y[j+1] - traj.y[j];
-    traj.yaw.emplace_back(atan2(dy, dx));
-    traj.ds.emplace_back(sqrt(dx * dx + dy * dy));
-  }
-
-  traj.yaw.emplace_back(traj.yaw.back());
-  traj.ds.emplace_back(traj.ds.back());
-
-  // calculate curvature
-  for (int j = 0; j < traj.yaw.size() - 1; j++)
-  {
-    double yaw_diff = unifyAngleRange(traj.yaw[j+1] - traj.yaw[j]);
-    traj.c.emplace_back(yaw_diff / traj.ds[j]);
-  }
-}
-std::vector<std::vector<std::vector<FrenetPath>>> FrenetOptimalTrajectoryPlanner::sampleEndStates(const int lane_id, const double left_bound, 
-                                                                                                  const double right_bound, const double current_speed, 
-                                                                                                  const bool use_heuristic)
-{
-  // list of frenet end states sampled
-  std::vector<std::vector<std::vector<FrenetPath>>> trajs_3d;
-  
-  // Heuristic parameters
-  const double max_sqr_dist = std::pow(settings_.num_width, 2) + std::pow(settings_.num_speed, 2) + std::pow(settings_.num_t, 2);
-  
-  // Sampling on the lateral direction
-  const double delta_width = (left_bound - settings_.center_offset)/((settings_.num_width - 1)/2);
-  for (int i = 0; i < settings_.num_width; i++)  // left being positive
-  {
-    std::vector<std::vector<FrenetPath>> trajs_2d;
-    const double d = right_bound + i*delta_width;
-    const double lat_norm = std::max(std::pow(left_bound - settings_.center_offset, 2), std::pow(right_bound - settings_.center_offset, 2));
-    const double lat_cost = settings_.k_diff*std::pow(d - settings_.center_offset, 2)/lat_norm;
-
-    // Sampling on the longitudial direction
-    const double delta_v = (settings_.highest_speed - settings_.lowest_speed)/(settings_.num_speed - 1);
-    for (int j = 0; j < settings_.num_speed; j++)
-    {
-      std::vector<FrenetPath> trajs_1d;
-      const double v = settings_.lowest_speed + j*delta_v;
-      const double speed_cost = settings_.k_diff*pow((settings_.highest_speed - v)/settings_.highest_speed, 2);
-
-      // Sampling on the time dimension
-      const double delta_t = (settings_.max_t - settings_.min_t)/(settings_.num_t - 1);
-      for (int k = 0; k < settings_.num_t; k++)
-      {
-        FrenetState end_state;
-        // end time
-        end_state.T = settings_.min_t + k*delta_t;
-        // end longitudial state [s, s_d, s_dd]
-        end_state.s = 0.0;  // TBD later by polynomial
-        end_state.s_d  = v;
-        end_state.s_dd = 0.0;
-        // end lateral state [d, d_d, d_dd]
-        end_state.d = d;
-        end_state.d_d  = 0.0;
-        end_state.d_dd = 0.0;
-
-        // Planning Horizon cost (encourage longer planning horizon)
-        const double time_cost = settings_.k_time*(1.0 - (end_state.T - settings_.min_t)/(settings_.max_t - settings_.min_t));
-        
-        // fixed cost terms
-        const double fix_cost = settings_.k_lat * lat_cost 
-                              + settings_.k_lon * (time_cost + speed_cost);
-        
-        // estimated heuristic cost terms
-        // const double heu_cost = settings_.k_lat * settings_.k_diff * pow(start_state_.d - end_state.d, 2);
-        double heu_cost = 0.0;
-        if (use_heuristic && prev_best_traj_.is_generated) // Add history heuristic
-        {
-          const double heu_sqr_dist = std::pow(i - prev_best_traj_.idx(0), 2) + std::pow(j - prev_best_traj_.idx(1), 2) + std::pow(k - prev_best_traj_.idx(2), 2);
-          heu_cost = settings_.k_heuristic * heu_sqr_dist/max_sqr_dist;
-        }
-
-        trajs_1d.emplace_back(FrenetPath(lane_id, end_state, fix_cost, heu_cost));
-      }
-
-      trajs_2d.emplace_back(trajs_1d);
-    }
-
-    trajs_3d.emplace_back(trajs_2d);
-  }
-
-  return trajs_3d;
 }
 
 std::vector<fop::FrenetPath> FrenetOptimalTrajectoryPlanner::generateFrenetPaths(const fop::FrenetState& frenet_state, const int lane_id,
@@ -793,17 +532,18 @@ int FrenetOptimalTrajectoryPlanner::calculateGlobalPaths(std::vector<fop::Frenet
 bool FrenetOptimalTrajectoryPlanner::checkConstraints(FrenetPath& traj)
 {
   bool passed = true;
+  /*
   for (int i = 0; i < traj.c.size(); i++)
   {
-    
-    /*
+    // commented by Khaled
+
     if (!std::isnormal(traj.x[i]) || !std::isnormal(traj.y[i]))
     {
       passed = false;
       std::cout << "Condition 0: Contains ilegal values" << traj.x[i] << std::endl;
       break;
     }
-    */
+    
     if (traj.s_d[i] > settings_.max_speed)
     {
       passed = false;
@@ -829,8 +569,9 @@ bool FrenetOptimalTrajectoryPlanner::checkConstraints(FrenetPath& traj)
     //             << ". Curr curvature = " << (traj.c[i]) << std::endl;
     //   break;
     // }
-  }
 
+  }
+  */
   traj.constraint_passed = passed;
   return passed;
 }
@@ -936,8 +677,8 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
       
       // use Jackal radius instead of vehicle's width and length
       double robot_radius    = 0.325;
-      double obstacle_radius = 0.3;
-      double safety_distance = 0.1;
+      double obstacle_radius = settings_.obstacle_radius;
+      double safety_distance = 0.0;
 
       double obstacle_x_pos;
       double obstacle_y_pos;
@@ -967,8 +708,6 @@ std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const Fr
     }
   }
   
-
-  // Uncomment this part to take the uncertainty in the humans behavior into consideration
   /*
   // call the service where we calculate collision probability 
   risk_srv_.request.pred_traj.resize(planned_traj.x.size());

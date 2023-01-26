@@ -20,20 +20,6 @@
     <include file="$(find mobile_robot_state_publisher)/launch/mobile_robot_publisher.launch">
     </include>
  
-  <!-- lanelet2 Global Planner -->
-  <!--
-  <node pkg="mission_planner" type="mission_planner" name="mission_planner" output="screen">
-    <param name="map_frame"                   value="map" />
-    <param name="base_link_frame"             value="base_link" />
-    <remap from="~input/vector_map"           to="/lanelet_map_bin" />
-    <remap from="~input/goal_pose"            to="/move_base_simple/goal" />
-    <remap from="~input/checkpoint"           to="/move_base_simple/fake_goal" />
-    <remap from="~output/route"               to="/planning/mission_planning/route" />
-    <remap from="~debug/route_marker"         to="/planning/mission_planning/route_marker" />
-    <remap from="~output/global_path"         to="/planning/mission_planning/global_path" />
-
-  </node> -->
-  
   <rosparam command="load" file="$(find frenet_optimal_planner)/config/path.yaml"/>
   
   <include file="$(find pedestrian_simulator)/launch/simulation.launch"/>
@@ -66,6 +52,6 @@
     <node pkg="frenet_optimal_planner" type="risk_assessment.py" name="risk_computation" output="screen"/> 
   
    <!-- configured rviz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find lmpcc)/rviz_config/jackal/jackal_simulator.rviz" output="log"/>
+   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find frenet_optimal_planner)/rviz/jackal_simulator.rviz" output="log"/>
 
 </launch>

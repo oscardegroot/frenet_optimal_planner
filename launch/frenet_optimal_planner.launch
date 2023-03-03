@@ -9,7 +9,8 @@
     <arg name="debug_kinematic_cal" default="false"/>
     <arg name="debug_collision_detection" default="false"/>
     <arg name="gui" default="false" />
-
+    <arg name="pedestrian_scenario" default="" />
+    <arg name="overwrite_pedestrian_scenario" default="false" />
 
     <!-- Robot Simulation -->
     <include file="$(find jackal_gazebo)/launch/jackal_world.launch">
@@ -22,10 +23,13 @@
  
   <rosparam command="load" file="$(find frenet_optimal_planner)/config/path.yaml"/>
   
-  <include file="$(find pedestrian_simulator)/launch/simulation.launch"/>
+  <include file="$(find pedestrian_simulator)/launch/simulation.launch">
+     <arg name="pedestrian_scenario" value="$(arg pedestrian_scenario)"/>
+     <arg name="overwrite_pedestrian_scenario" value="$(arg overwrite_pedestrian_scenario)"/>
+    </include>
 
   <!-- Local Planner -->
-  <node name="frenet_optimal_planner_node" pkg="frenet_optimal_planner" type="frenet_optimal_planner_node" output="screen">
+  <node name="frenet_optimal_planner_node" pkg="frenet_optimal_planner" type="frenet_optimal_planner_node" output="screen" required="true">
     <!-- Input Topic Names -->
     <!-- <param name="odom_topic"                    value="simulator/ground_truth/odom"/> -->
     <param name="odom_topic"                    value="/odometry/filtered"/>
@@ -47,7 +51,7 @@
   <!-- <node ns="local_planner" pkg="lgsvl_utils" type="detected_objects_visualizer" name="autoware_objects_visualizer" output="log" respawn="true" /> -->
 
   <!-- Dynamic Reconfigure GUI -->
-  <!-- <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen" /> -->
+  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen" />
   
     <node pkg="frenet_optimal_planner" type="risk_assessment.py" name="risk_computation" output="screen"/> 
   

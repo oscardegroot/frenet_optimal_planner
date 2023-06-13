@@ -101,8 +101,11 @@ public:
   void addLine(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2);
   void addLine(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2);
 
-  void addBrokenLine(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, double dist, bool ignore_z = true);
-  void addBrokenLine(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2, double dist, bool ignore_z = true);
+  void addBrokenLine(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, double dist);
+  void addBrokenLine(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2, double dist);
+  // void addBrokenLine(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, double dist, bool ignore_z = true);
+  // void addBrokenLine(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2, double dist, bool ignore_z =
+  // true);
 };
 
 class ROSPointMarker : public ROSMarker

@@ -56,6 +56,6 @@
     <node pkg="frenet_optimal_planner" type="risk_assessment.py" name="risk_computation" output="screen"/> 
   
    <!-- configured rviz -->
-   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find frenet_optimal_planner)/rviz/jackal_simulator.rviz" output="log"/>
+   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find frenet_optimal_planner)/rviz/jackal_simulator-3d.rviz" output="log"/>
 
 </launch>

@@ -151,19 +151,18 @@ namespace fop
     server.setCallback(f);
 
     // Hyperparameters from launch file
-    ROS_ASSERT(private_nh.getParam("odom_topic", odom_topic));
-    ROS_ASSERT(private_nh.getParam("lane_info_topic", lane_info_topic));
-    ROS_ASSERT(private_nh.getParam("obstacles_topic", obstacles_topic));
-    ROS_ASSERT(private_nh.getParam("curr_traj_topic", curr_traj_topic));
-    ROS_ASSERT(private_nh.getParam("next_traj_topic", next_traj_topic));
-    ROS_ASSERT(private_nh.getParam("ref_path_topic", ref_path_topic));
-    ROS_ASSERT(private_nh.getParam("ref_path_visual_topic", ref_path_visual_topic));
-    ROS_ASSERT(private_nh.getParam("traj_visual_topic", traj_visual_topic));
-    ROS_ASSERT(private_nh.getParam("sample_space_topic", sample_space_topic));
-    ROS_ASSERT(private_nh.getParam("final_traj_topic", final_traj_topic));
-    ROS_ASSERT(private_nh.getParam("candidate_trajs_topic", candidate_trajs_topic));
-
-    ROS_ASSERT(private_nh.getParam("vehicle_cmd_topic", vehicle_cmd_topic));
+    private_nh.getParam("odom_topic", odom_topic);
+    private_nh.getParam("lane_info_topic", lane_info_topic);
+    private_nh.getParam("obstacles_topic", obstacles_topic);
+    private_nh.getParam("curr_traj_topic", curr_traj_topic);
+    private_nh.getParam("next_traj_topic", next_traj_topic);
+    private_nh.getParam("ref_path_topic", ref_path_topic);
+    private_nh.getParam("ref_path_visual_topic", ref_path_visual_topic);
+    private_nh.getParam("traj_visual_topic", traj_visual_topic);
+    private_nh.getParam("sample_space_topic", sample_space_topic);
+    private_nh.getParam("final_traj_topic", final_traj_topic);
+    private_nh.getParam("candidate_trajs_topic", candidate_trajs_topic);
+    private_nh.getParam("vehicle_cmd_topic", vehicle_cmd_topic);
 
     // // std::cout << "reference path msg is: " << ref_path_topic << std::endl;
 
@@ -176,6 +175,7 @@ namespace fop
     // subscribe to obstacles from pedestrian simulator package
     obstacles_sub = nh.subscribe("/pedestrian_simulator/pedestrians", 1, &FrenetOptimalPlannerNode::obstacleCallback, this);
     obstacle_prediction_sub = nh.subscribe("/pedestrian_simulator/trajectory_predictions", 1, &FrenetOptimalPlannerNode::obstacleTrajectoryPredictionsCallback, this);
+    collision_sub_ = nh.subscribe("/lmpcc/collision_detected", 1, &FrenetOptimalPlannerNode::CollisionCallback, this);
 
     // obstacles_sub = nh.subscribe(obstacles_topic, 1, &FrenetOptimalPlannerNode::obstaclesCallback, this);
     ref_path_pub = nh.advertise<nav_msgs::Path>(ref_path_topic, 1);
@@ -199,7 +199,7 @@ namespace fop
     risk_planned_traj_client_ = nh.serviceClient<frenet_optimal_planner::ObservedRisk>("planned_traj_risk");
 
     // visualizes black circles for pedestrians
-    obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 20));
+    obstacle_markers_.reset(new ROSMarkerPublisher(nh, "lmpcc/received_obstacles", "map", 30));
     ros_markers_.reset(new ROSMarkerPublisher(nh, "obstacle_prediction/markers", "map", 500)); // 3500)); // was 1800
 
     total_exp_time_ = 0.0;
@@ -227,7 +227,12 @@ namespace fop
     // ROS_INFO("Local Planner: Lane Info Received, with %d points, filtered to %d points", int(lane_.points.size()), int(lane_.points.size()));
   }
 
-  void FrenetOptimalPlannerNode::visualizeObstaclePrediction(const lmpcc_msgs::obstacle_array &obstacles_prediction)
+  void FrenetOptimalPlannerNode::CollisionCallback(const std_msgs::Float64 &msg)
+  {
+    intrusion_ = msg.data;
+  }
+
+  void FrenetOptimalPlannerNode::visualizeObstaclePrediction(const mpc_msgs::obstacle_array &obstacles_prediction)
   {
     // ROS_INFO("FOP: Visualizing Obstacles predictions");
 
@@ -258,7 +263,7 @@ namespace fop
         std::vector<double> obstacle_x_pos;
         std::vector<double> obstacle_y_pos;
 
-        for (int j = 0; j < obstacles_prediction.obstacles[i].gaussians[mode].mean.poses.size(); j++)
+        for (int j = 1; j < obstacles_prediction.obstacles[i].gaussians[mode].mean.poses.size(); j++)
         {
           obstacle_x_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.x);
           obstacle_y_pos.push_back(obstacles_prediction.obstacles[i].gaussians[mode].mean.poses[j].pose.position.y);
@@ -293,50 +298,55 @@ namespace fop
   void FrenetOptimalPlannerNode::odomCallback(const nav_msgs::Odometry::ConstPtr &odom_msg)
   {
     // // std::cout << "OdomCallback is here" << std::endl;
-    current_state_.v = magnitude(odom_msg->twist.twist.linear.x, odom_msg->twist.twist.linear.y, odom_msg->twist.twist.linear.z);
+    current_state_.v = magnitude(odom_msg->twist.twist.linear.x, odom_msg->twist.twist.linear.y, 0.);
     current_angular_velocity_ = odom_msg->twist.twist.angular.z;
-    geometry_msgs::TransformStamped transform_stamped;
-    try
-    {
-      transform_stamped = tf_buffer.lookupTransform("map", odom_msg->header.frame_id, ros::Time(0));
-    }
-    catch (tf2::TransformException &ex)
-    {
-      ROS_WARN("%s", ex.what());
-      return;
-    }
+    // geometry_msgs::TransformStamped transform_stamped;
+    // try
+    // {
+    //   transform_stamped = tf_buffer.lookupTransform("map", odom_msg->header.frame_id, ros::Time(0));
+    // }
+    // catch (tf2::TransformException &ex)
+    // {
+    //   ROS_WARN("%s", ex.what());
+    //   return;
+    // }
 
-    geometry_msgs::Pose pose_in_map;
-    tf2::doTransform(odom_msg->pose.pose, pose_in_map, transform_stamped);
+    // geometry_msgs::Pose pose_in_map;
+    // tf2::doTransform(odom_msg->pose.pose, pose_in_map, transform_stamped);
     // Current XY of robot (map frame)
-    current_state_.x = pose_in_map.position.x;
-    current_state_.y = pose_in_map.position.y;
+    current_state_.x = odom_msg->pose.pose.position.x;
+    current_state_.y = odom_msg->pose.pose.position.y;
+    current_state_.yaw = odom_msg->pose.pose.orientation.z;
     state_received_ = true;
     // For the Jackal, this parameter can be ignored
-    map_height_ = pose_in_map.position.z - 0.3; // minus the tire radius
+    // map_height_ = odom_msg->pose.pose.position.z - 0.3; // minus the tire radius
 
-    tf2::Quaternion q_tf2(pose_in_map.orientation.x, pose_in_map.orientation.y,
-                          pose_in_map.orientation.z, pose_in_map.orientation.w);
-    tf2::Matrix3x3 m(q_tf2.normalize());
-    double roll, pitch;
-    m.getRPY(roll, pitch, current_state_.yaw);
+    // tf2::Quaternion q_tf2(odom_msg->pose.pose.orientation.x, odom_msg->pose.pose.orientation.y,
+    //                       odom_msg->pose.pose.orientation.z, odom_msg->pose.pose.orientation.w);
+    // tf2::Matrix3x3 m(q_tf2.normalize());
+    // double roll, pitch;
+    // m.getRPY(roll, pitch, current_state_.yaw);
 
     // Plots a Axis to display the path variable location
     // Oscar
-    geometry_msgs::TransformStamped transformStamped;
-    transformStamped.header.stamp = ros::Time::now();
-    transformStamped.header.frame_id = "map";
-    transformStamped.child_frame_id = "robot_state";
+    if (t_last_tf_ + ros::Duration(0.01) < ros::Time::now())
+    {
+      geometry_msgs::TransformStamped transformStamped;
+      transformStamped.header.stamp = ros::Time::now();
+      t_last_tf_ = transformStamped.header.stamp;
+      transformStamped.header.frame_id = "map";
+      transformStamped.child_frame_id = "robot_state";
 
-    transformStamped.transform.translation.x = current_state_.x;
-    transformStamped.transform.translation.y = 0.; // solver_interface_ptr_->State().y();
-    transformStamped.transform.translation.z = 0.0;
-    transformStamped.transform.rotation.x = 0;
-    transformStamped.transform.rotation.y = 0;
-    transformStamped.transform.rotation.z = 0;
-    transformStamped.transform.rotation.w = 1;
+      transformStamped.transform.translation.x = current_state_.x;
+      transformStamped.transform.translation.y = 0.; // solver_interface_ptr_->State().y();
+      transformStamped.transform.translation.z = 0.0;
+      transformStamped.transform.rotation.x = 0;
+      transformStamped.transform.rotation.y = 0;
+      transformStamped.transform.rotation.z = 0;
+      transformStamped.transform.rotation.w = 1;
 
-    path_pose_pub_.sendTransform(transformStamped);
+      path_pose_pub_.sendTransform(transformStamped);
+    }
 
     // // std::cout << "robot's x-position" << current_state_.x << std::endl;
     // // std::cout << "robot's y-position" << current_state_.y << std::endl;
@@ -526,7 +536,7 @@ namespace fop
       }
       else
       {
-        for (int i = curr_trajectory_.x.size(); i < 19; i++)
+        for (int i = curr_trajectory_.x.size(); i < 29; i++)
         {
 
           if (std::isnormal(next_traj.x[i]) && std::isnormal(next_traj.y[i]) && std::isnormal(next_traj.yaw[i]) && next_traj.x[i] >= 0.01)
@@ -576,14 +586,19 @@ namespace fop
     iteration_at_last_reset_ = control_iteration_;
 
     // Figure out what the name of our recording should be
+    std::string project_name;
+    nh.getParam("recording/project_name", project_name);
     std::string recording_name;
-    ROS_ASSERT(nh.getParam("pedestrian_simulator/node/scenario", recording_name));
+    nh.getParam("pedestrian_simulator/node/scenario", recording_name);
     std::string segment; // If the name is a file name, remove the file extension
     std::getline(std::stringstream(recording_name), segment, '.');
     std::replace(segment.begin(), segment.end(), '/', '-'); // replace all '/' with '-'
     recording_name = segment;
+    std::string prepend_name = "interactive_";
+    if (project_name != "")
+      recording_name = project_name + "/" + prepend_name + recording_name; // Put it in the project folder
 
-    int num_experiments = 110;
+    int num_experiments = 210;
 
     // Save every x experiments
     if (experiment_counter_ % num_experiments == 0 && experiment_counter_ > 0)
@@ -597,8 +612,8 @@ namespace fop
     if (experiment_counter_ >= num_experiments + 1)
     {
       ROS_WARN("Completed the given number of experiments. I know it looks like an error, but it is actually a feature ;)"); // Stop when done with the given number of experiments (+1 for first simulation)
+      throw std::runtime_error("Stopping the controller!");
     }
-    assert(experiment_counter_ < num_experiments + 1);
 
     for (int j = 0; j < 5; j++)
     {
@@ -627,7 +642,7 @@ namespace fop
     CreateObstacleList();
   }
 
-  void FrenetOptimalPlannerNode::obstacleTrajectoryPredictionsCallback(const lmpcc_msgs::obstacle_array &msg)
+  void FrenetOptimalPlannerNode::obstacleTrajectoryPredictionsCallback(const mpc_msgs::obstacle_array &msg)
   {
     // ROS_INFO_STREAM("FrenetOptimalPlannerNode::ObstacleTrajectoryPredictionsCallback received " << msg.obstacles.size() << " obstacle predictions");
     //  this msg includes the trajectory prediction for each obstacle's gaussian mode along prediction horizon
@@ -706,6 +721,10 @@ namespace fop
     Eigen::Vector2d vehicle_pose(current_state_.x, current_state_.y);
     double vehicle_orientation = current_state_.yaw;
 
+    // Dummy saves
+    data_saver_.AddData("status", (int)2);
+    data_saver_.AddData("objective", 0.);
+
     data_saver_.AddData("vehicle_pose", vehicle_pose);
     data_saver_.AddData("vehicle_orientation", vehicle_orientation);
 
@@ -713,7 +732,7 @@ namespace fop
     data_saver_.AddData("lateral_velocity", current_angular_velocity_);
 
     // OBSTACLES
-    int collisions = 0;
+    /*int collisions = 0;
     double max_intrusion = 0.;
     for (size_t v = 0; v < data_.dynamic_obstacles_.size(); v++)
     {
@@ -743,13 +762,16 @@ namespace fop
       if ((vehicle_pose - pose).norm() < obstacle.discs_[0].radius_ + 0.325 - 1e-2)
       {
         // // std::cout << "dist to collision boundary: " << (vehicle_pose - pose).norm() - obstacle.discs_[0].radius - vehicle_->discs_[0].radius << std::endl;
-        ROS_WARN("Collision Detected");
+        ROS_WARN_STREAM("Collision Detected. Intrusion: " << -((vehicle_pose - pose).norm() - (obstacle.discs_[0].radius_ + 0.325)) << "m");
         collisions++;
         max_intrusion = std::max(max_intrusion, -((vehicle_pose - pose).norm() - (obstacle.discs_[0].radius_ + 0.325)));
       }
     }
     data_saver_.AddData("metric_collisions", collisions);
-    data_saver_.AddData("max_intrusion", max_intrusion);
+    data_saver_.AddData("max_intrusion", max_intrusion);*/
+    // External collision checking
+    data_saver_.AddData("metric_collisions", int(intrusion_ > 0.));
+    data_saver_.AddData("max_intrusion", intrusion_);
 
     data_saver_.AddData("iteration", control_iteration_);
     control_iteration_++;
@@ -960,7 +982,7 @@ namespace fop
 
     // if reached the end of the lane, stop
     auto time_since_last_reset = (ros::Time::now() - t_last_reset_).sec;
-    if ((time_since_last_reset > 1.0 && current_state_.x > 30.) || SETTINGS.reset_world || time_since_last_reset > 45.) //(start_id >= (lane_.points.size() - 2))  // exclude last 2 waypoints for safety, and prevent code crashing
+    if ((time_since_last_reset > 1.0 && current_state_.x > 25.) || SETTINGS.reset_world || time_since_last_reset > 45.) //(start_id >= (lane_.points.size() - 2))  // exclude last 2 waypoints for safety, and prevent code crashing
     {
       // If failure, record as such
       if (SETTINGS.reset_world || time_since_last_reset > 45.)

@@ -180,7 +180,7 @@ namespace fop
   std::vector<fop::FrenetPath>
   FrenetOptimalTrajectoryPlanner::frenetOptimalPlanning(fop::Spline2D &cubic_spline, const fop::FrenetState &frenet_state, const int lane_id,
                                                         const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async,
-                                                        const lmpcc_msgs::obstacle_array &obstacles, const bool use_heuristic, fop::Path &curr_trajectory, double r_x, ros::ServiceClient risk_planned_traj_client)
+                                                        const mpc_msgs::obstacle_array &obstacles, const bool use_heuristic, fop::Path &curr_trajectory, double r_x, ros::ServiceClient risk_planned_traj_client)
   {
     // Clear the canidate trajectories from the last planning cycle
     std::priority_queue<FrenetPath, std::vector<FrenetPath>, std::greater<std::vector<FrenetPath>::value_type>> empty;
@@ -600,7 +600,7 @@ namespace fop
     return num_checks;
   }
 
-  bool FrenetOptimalTrajectoryPlanner::checkCollisions(FrenetPath &ego_traj, const lmpcc_msgs::obstacle_array &obstacle_trajs,
+  bool FrenetOptimalTrajectoryPlanner::checkCollisions(FrenetPath &ego_traj, const mpc_msgs::obstacle_array &obstacle_trajs,
                                                        const bool use_async, int &num_checks, fop::Path &curr_trajectory, ros::ServiceClient risk_planned_traj_client)
   {
     /*
@@ -633,7 +633,7 @@ namespace fop
    * @param margin collision margin in [m]
    * @return false if there is a collision along the path. Otherwise, true
    */
-  std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const FrenetPath &ego_traj, const lmpcc_msgs::obstacle_array &obstacles,
+  std::pair<bool, int> FrenetOptimalTrajectoryPlanner::checkTrajCollision(const FrenetPath &ego_traj, const mpc_msgs::obstacle_array &obstacles,
                                                                           const double margin_lon, const double margin_lat, fop::Path &curr_traj)
   {
     int num_checks = 0;

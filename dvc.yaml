@@ -1,33 +1,26 @@
+vars:
+  - method:
+      project: guidance-journal-2023
+      project_folder: "../../../../../../../Documents/publications/multi-mpc-2023/results"
+
 stages:
   run:
     foreach:
       unstructured:
-        file: random/16_straight.xml # We can add each experiment like this (this is quite nice)
-        name: random-16_straight
-      unstructured-medium:
-        file: random/12_straight.xml # We can add each experiment like this (this is quite nice)
-        name: random-12_straight
-      unstructured-easy:
-        file: random/8_straight.xml
-        name: random-8_straight
-      unstructured-super-easy:
-        file: random/4_straight.xml
-        name: random-4_straight
-      corridor:
-        file: corridor/16_random.xml # We can add each experiment like this (this is quite nice)
-        name: corridor-16_random
-      crossing:
-        file: crossing/16_random-sidewalks.xml # We can add each experiment like this (this is quite nice)
-        name: crossing-16_random-sidewalks
+        file: random_social/12_corridor.xml
+        name: interactive_random_social-12_corridor
+      medium:
+        file: random_social/8_corridor.xml
+        name: interactive_random_social-8_corridor
+      low:
+        file: random_social/4_corridor.xml
+        name: interactive_random_social-4_corridor
     do:
       cmd:
-        - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch overwrite_pedestrian_scenario:=true pedestrian_scenario:="${item.file}"
+        - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch overwrite_pedestrian_scenario:=true pedestrian_scenario:="${item.file}" project_name:="${method.project_folder}/data"
       deps:
         - src/frenet_optimal_planner_node.cpp
-        - include/frenet_optimal_planner/frenet_optimal_planner_node.h
       params:
-        # - lmpcc/config/jackal/jackal_simulator_parameters.yaml:
-        #   - recording.number_of_experiments
         - config/path.yaml:
             - global_path.x
             - dvc_trigger
@@ -35,60 +28,42 @@ stages:
             - pedestrian_simulator.pedestrians.seed
             - pedestrian_simulator.pedestrians.process_noise
       outs:
-        - ../lmpcc/lmpcc/matlab_exports/data/${item.name}_frenet-planner.txt
+        - ../lmpcc/lmpcc_tools/scripts/data/${method.project_folder}/data/${item.name}_frenet-planner.txt 
 
   evaluate:
     foreach:
       unstructured:
-        file: random/16_straight.xml # We can add each experiment like this (this is quite nice)
-        name: random-16_straight
-      unstructured-medium:
-        file: random/12_straight.xml # We can add each experiment like this (this is quite nice)
-        name: random-12_straight
-      unstructured-easy:
-        file: random/8_straight.xml
-        name: random-8_straight
-      unstructured-super-easy:
-        file: random/4_straight.xml
-        name: random-4_straight
-      corridor:
-        file: corridor/16_random.xml # We can add each experiment like this (this is quite nice)
-        name: corridor-16_random
-      crossing:
-        file: crossing/16_random-sidewalks.xml # We can add each experiment like this (this is quite nice)
-        name: crossing-16_random-sidewalks
+        file: random_social/12_corridor.xml
+        name: interactive_random_social-12_corridor
+      medium:
+        file: random_social/8_corridor.xml
+        name: interactive_random_social-8_corridor
+      low:
+        file: random_social/4_corridor.xml
+        name: interactive_random_social-4_corridor
     do:
-      cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 metrics.py ${item.name} frenet-planner && cd ../../../..
+      cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py ${item.name} frenet-planner && cd ../../../..
       deps:
-        - ../lmpcc/lmpcc/matlab_exports/data/${item.name}_frenet-planner.txt
-        - ../lmpcc/lmpcc/matlab_exports/python/metrics.py
+        - ../lmpcc/lmpcc_tools/scripts/data/${method.project_folder}/data/${item.name}_frenet-planner.txt 
+        - ../lmpcc/lmpcc_tools/scripts/metrics.py
       metrics:
-        - ../lmpcc/lmpcc/matlab_exports/python/metrics/${item.name}/frenet-planner.json
+        - ../lmpcc/lmpcc_tools/scripts/data/${method.project_folder}/metrics/${item.name}/frenet-planner.json 
 
-  compare:
-    foreach:
-      unstructured:
-        file: random/16_straight.xml # We can add each experiment like this (this is quite nice)
-        name: random-16_straight
-      unstructured-medium:
-        file: random/12_straight.xml # We can add each experiment like this (this is quite nice)
-        name: random-12_straight
-      unstructured-easy:
-        file: random/8_straight.xml
-        name: random-8_straight
-      unstructured-super-easy:
-        file: random/4_straight.xml
-        name: random-4_straight
-      corridor:
-        file: corridor/16_random.xml # We can add each experiment like this (this is quite nice)
-        name: corridor-16_random
-      crossing:
-        file: crossing/16_random-sidewalks.xml # We can add each experiment like this (this is quite nice)
-        name: crossing-16_random-sidewalks
-    do:
-      cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 compare.py ${item.name} && cd ../../../..
-      deps:
-        - ../lmpcc/lmpcc/matlab_exports/python/compare.py
-        - ../lmpcc/lmpcc/matlab_exports/python/metrics/${item.name}/frenet-planner.json
-      outs:
-        - ../../../../Documents/publications/multi-mpc-2023/latex/tables/${item.name}.tex
+  # compare:
+  #   foreach:
+  #     unstructured:
+  #       file: random_social/12_corridor.xml
+  #       name: interactive_random_social-12_corridor
+  #     medium:
+  #       file: random_social/8_corridor.xml
+  #       name: interactive_random_social-8_corridor
+  #     low:
+  #       file: random_social/4_corridor.xml
+  #       name: interactive_random_social-4_corridor
+  #   do:
+  #     cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 compare.py -o "pedsim_interaction" -l "interactive_random_social-12_corridor" "interactive_random_social-8_corridor" "interactive_random_social-4_corridor"
+  #     deps:
+  #       - ../lmpcc/lmpcc_tools/scripts/compare.py
+  #       - ../lmpcc/lmpcc_tools/scripts/data/${method.project_folder}/metrics/${item.name}/frenet-planner.json 
+  #     outs:
+  #      - lmpcc_tools/scripts/data/${method.project_folder}/../latex/tables/pedsim_interaction.tex

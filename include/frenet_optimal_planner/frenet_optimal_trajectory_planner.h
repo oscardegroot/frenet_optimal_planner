@@ -21,9 +21,9 @@
 
 #include "sat_collision_checker.h"
 
-#include <lmpcc_msgs/obstacle_array.h>
-#include <lmpcc_msgs/obstacle_gmm.h>
-#include <lmpcc_msgs/gaussian.h>
+#include <mpc_msgs/obstacle_array.h>
+#include <mpc_msgs/obstacle_gmm.h>
+#include <mpc_msgs/gaussian.h>
 #include <frenet_optimal_planner/ObservedRisk.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
@@ -152,7 +152,7 @@ namespace fop
     // the returning type can be changed
     std::vector<fop::FrenetPath> frenetOptimalPlanning(fop::Spline2D &cubic_spline, const fop::FrenetState &frenet_state, const int lane_id,
                                                        const double left_width, const double right_width, const double current_speed, const bool check_collision, const bool use_async,
-                                                       const lmpcc_msgs::obstacle_array &obstacles, const bool use_heuristic, fop::Path &curr_traj, double r_x_, ros::ServiceClient risk_planned_traj_client);
+                                                       const mpc_msgs::obstacle_array &obstacles, const bool use_heuristic, fop::Path &curr_traj, double r_x_, ros::ServiceClient risk_planned_traj_client);
 
     std::vector<FrenetPath> all_trajs_;
     std::shared_ptr<std::vector<fop::FrenetPath>> all_trajs_fop_;
@@ -179,10 +179,10 @@ namespace fop
     // Check for vehicle kinematic constraints
     bool checkConstraints(FrenetPath &traj);
 
-    bool checkCollisions(FrenetPath &ego_traj, const lmpcc_msgs::obstacle_array &obstacle_trajs,
+    bool checkCollisions(FrenetPath &ego_traj, const mpc_msgs::obstacle_array &obstacle_trajs,
                          const bool use_async, int &num_checks, fop::Path &curr_traj, ros::ServiceClient risk_planned_traj_client);
 
-    std::pair<bool, int> checkTrajCollision(const FrenetPath &ego_traj, const lmpcc_msgs::obstacle_array &obstacle_trajs,
+    std::pair<bool, int> checkTrajCollision(const FrenetPath &ego_traj, const mpc_msgs::obstacle_array &obstacle_trajs,
                                             const double margin_lon, const double margin_lat, fop::Path &curr_traj);
   };
 

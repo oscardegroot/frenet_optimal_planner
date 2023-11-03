@@ -95,14 +95,12 @@ stages:
   run@unstructured:
     cmd:
     - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch
-      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random/16_straight.xml"
+      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random_social/12_corridor.xml"
+      project_name:="../../../../../../../Documents/publications/multi-mpc-2023/results/data"
     deps:
-    - path: include/frenet_optimal_planner/frenet_optimal_planner_node.h
-      md5: a5791d919e44377816d0534e0ec2a6cb
-      size: 7799
     - path: src/frenet_optimal_planner_node.cpp
-      md5: 499344ab87079b08b11c797d8cc70ab9
-      size: 58228
+      md5: 8147cf5fefcf4400e4aa0a268613d01b
+      size: 59237
     params:
       ../pedestrian_simulator/config/configuration.yaml:
         pedestrian_simulator.pedestrians.process_noise:
@@ -128,37 +126,37 @@ stages:
         - 39
         - 42
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-16_straight_frenet-planner.txt
-      md5: a14a807c6f43c9ab5d64c791eaaab78d
-      size: 79510633
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/interactive_random_social-12_corridor_frenet-planner.txt
+      md5: d26900b9f86a5f11e67c96fff6d0d529
+      size: 12075815
   evaluate@unstructured:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 metrics.py
-      random-16_straight frenet-planner && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py
+      interactive_random_social-12_corridor frenet-planner && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-16_straight_frenet-planner.txt
-      md5: a14a807c6f43c9ab5d64c791eaaab78d
-      size: 79510633
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics.py
-      md5: febb837793c40581060375298448dcc9
-      size: 4777
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/interactive_random_social-12_corridor_frenet-planner.txt
+      md5: d26900b9f86a5f11e67c96fff6d0d529
+      size: 12075815
+    - path: ../lmpcc/lmpcc_tools/scripts/metrics.py
+      md5: 729eefc136712a2168d211f213210475
+      size: 7986
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-16_straight/frenet-planner.json
-      md5: a03a0d6f0c9df2c768d8ef1e011a5a2f
-      size: 1662
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/interactive_random_social-12_corridor/frenet-planner.json
+      md5: 41b2b14e818e629d0b8cae9e25aeef5c
+      size: 4237
   compare@unstructured:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 compare.py
-      random-16_straight && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 compare.py
+      random_fast-16_straight && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/compare.py
-      md5: 5448ec723a66f4c55b17cf3dc38bf981
-      size: 4370
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-16_straight/frenet-planner.json
-      md5: a03a0d6f0c9df2c768d8ef1e011a5a2f
-      size: 1662
+    - path: ../lmpcc/lmpcc_tools/scripts/compare.py
+      md5: a4986850d5fc6093f82ea51a5a1e324a
+      size: 10626
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-16_straight/frenet-planner.json
+      md5: 9c1cdeb55423be6e68bbe14e88437dd0
+      size: 4232
     outs:
-    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random-16_straight.tex
-      md5: ba9e13887e05154374a2be6f2a3f296b
-      size: 554
+    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random_fast-16_straight.tex
+      md5: 11e8fa9f2347894b66cd8e13dbfecd32
+      size: 621
   compare@corridor:
     cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 compare.py
       corridor-16_random && cd ../../../..
@@ -204,14 +202,15 @@ stages:
   run@unstructured-easy:
     cmd:
     - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch
-      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random/8_straight.xml"
+      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random_fast/8_straight.xml"
+      project_name:="../../../../../../../Documents/publications/multi-mpc-2023/results/data"
     deps:
     - path: include/frenet_optimal_planner/frenet_optimal_planner_node.h
       md5: a5791d919e44377816d0534e0ec2a6cb
       size: 7799
     - path: src/frenet_optimal_planner_node.cpp
-      md5: 499344ab87079b08b11c797d8cc70ab9
-      size: 58228
+      md5: e5a1602b25929bb8e9a538cf38d5681c
+      size: 58631
     params:
       ../pedestrian_simulator/config/configuration.yaml:
         pedestrian_simulator.pedestrians.process_noise:
@@ -237,48 +236,49 @@ stages:
         - 39
         - 42
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-8_straight_frenet-planner.txt
-      md5: 0c8e6760288ef63b39272875dfea2016
-      size: 34220461
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/random_fast-8_straight_frenet-planner.txt
+      md5: 68cb406f447afb91c1d559ac32c831e6
+      size: 61416119
   evaluate@unstructured-easy:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 metrics.py
-      random-8_straight frenet-planner && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py
+      random_fast-8_straight frenet-planner && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-8_straight_frenet-planner.txt
-      md5: 0c8e6760288ef63b39272875dfea2016
-      size: 34220461
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics.py
-      md5: febb837793c40581060375298448dcc9
-      size: 4777
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/random_fast-8_straight_frenet-planner.txt
+      md5: 68cb406f447afb91c1d559ac32c831e6
+      size: 61416119
+    - path: ../lmpcc/lmpcc_tools/scripts/metrics.py
+      md5: 4d43ff3b7d3929e9c8214926c83a7922
+      size: 7314
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-8_straight/frenet-planner.json
-      md5: 75c5a4a908f6845a6edd8829585d77a8
-      size: 1649
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-8_straight/frenet-planner.json
+      md5: aad0605fab96d0336527d64a66fb44f2
+      size: 4944
   compare@unstructured-easy:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 compare.py
-      random-8_straight && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 compare.py
+      random_fast-8_straight && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/compare.py
-      md5: 5448ec723a66f4c55b17cf3dc38bf981
-      size: 4370
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-8_straight/frenet-planner.json
-      md5: 75c5a4a908f6845a6edd8829585d77a8
-      size: 1649
+    - path: ../lmpcc/lmpcc_tools/scripts/compare.py
+      md5: a4986850d5fc6093f82ea51a5a1e324a
+      size: 10626
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-8_straight/frenet-planner.json
+      md5: d93a31fde08fa24dfb80084c9d9ec185
+      size: 4227
     outs:
-    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random-8_straight.tex
-      md5: c3ed1c5a05ee4a1915d2cdf35b8c829d
-      size: 551
+    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random_fast-8_straight.tex
+      md5: f0d8836f49c664d053f63a92c7e0c678
+      size: 619
   run@unstructured-super-easy:
     cmd:
     - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch
-      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random/4_straight.xml"
+      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random_fast/4_straight.xml"
+      project_name:="../../../../../../../Documents/publications/multi-mpc-2023/results/data"
     deps:
     - path: include/frenet_optimal_planner/frenet_optimal_planner_node.h
       md5: a5791d919e44377816d0534e0ec2a6cb
       size: 7799
     - path: src/frenet_optimal_planner_node.cpp
-      md5: 499344ab87079b08b11c797d8cc70ab9
-      size: 58228
+      md5: e5a1602b25929bb8e9a538cf38d5681c
+      size: 58631
     params:
       ../pedestrian_simulator/config/configuration.yaml:
         pedestrian_simulator.pedestrians.process_noise:
@@ -304,48 +304,49 @@ stages:
         - 39
         - 42
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-4_straight_frenet-planner.txt
-      md5: c34de4b09f62bd0dd90e85d2381c157e
-      size: 18999452
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/random_fast-4_straight_frenet-planner.txt
+      md5: 29c8d1e809feae2daf8826947311169c
+      size: 35676494
   evaluate@unstructured-super-easy:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 metrics.py
-      random-4_straight frenet-planner && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py
+      random_fast-4_straight frenet-planner && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-4_straight_frenet-planner.txt
-      md5: c34de4b09f62bd0dd90e85d2381c157e
-      size: 18999452
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics.py
-      md5: febb837793c40581060375298448dcc9
-      size: 4777
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/random_fast-4_straight_frenet-planner.txt
+      md5: 29c8d1e809feae2daf8826947311169c
+      size: 35676494
+    - path: ../lmpcc/lmpcc_tools/scripts/metrics.py
+      md5: 4d43ff3b7d3929e9c8214926c83a7922
+      size: 7314
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-4_straight/frenet-planner.json
-      md5: bd8c05a422bbbfa0942ff0ce549208a0
-      size: 1659
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-4_straight/frenet-planner.json
+      md5: 972664a37eefdc01cf5d05866a44d0a8
+      size: 4876
   compare@unstructured-super-easy:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 compare.py
-      random-4_straight && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 compare.py
+      random_fast-4_straight && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/compare.py
-      md5: 5448ec723a66f4c55b17cf3dc38bf981
-      size: 4370
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-4_straight/frenet-planner.json
-      md5: bd8c05a422bbbfa0942ff0ce549208a0
-      size: 1659
+    - path: ../lmpcc/lmpcc_tools/scripts/compare.py
+      md5: a4986850d5fc6093f82ea51a5a1e324a
+      size: 10626
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-4_straight/frenet-planner.json
+      md5: cc3ec8471e7f0c8447586f0b0fe6c802
+      size: 4233
     outs:
-    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random-4_straight.tex
-      md5: 0f24c8e3c1e69c240209ac65e441ebd4
-      size: 836
+    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random_fast-4_straight.tex
+      md5: fa344c1f215570feebe0dad0b805d1bf
+      size: 629
   run@unstructured-medium:
     cmd:
     - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch
-      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random/12_straight.xml"
+      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random_fast/12_straight.xml"
+      project_name:="../../../../../../../Documents/publications/multi-mpc-2023/results/data"
     deps:
     - path: include/frenet_optimal_planner/frenet_optimal_planner_node.h
       md5: a5791d919e44377816d0534e0ec2a6cb
       size: 7799
     - path: src/frenet_optimal_planner_node.cpp
-      md5: 499344ab87079b08b11c797d8cc70ab9
-      size: 58228
+      md5: e5a1602b25929bb8e9a538cf38d5681c
+      size: 58631
     params:
       ../pedestrian_simulator/config/configuration.yaml:
         pedestrian_simulator.pedestrians.process_noise:
@@ -371,34 +372,136 @@ stages:
         - 39
         - 42
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-12_straight_frenet-planner.txt
-      md5: f3a4f68b4b93ff99da8cf0afc1e13734
-      size: 51717760
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/random_fast-12_straight_frenet-planner.txt
+      md5: 4a8db770867d50dc786cc5f39c020dcc
+      size: 90805389
   evaluate@unstructured-medium:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 metrics.py
-      random-12_straight frenet-planner && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py
+      random_fast-12_straight frenet-planner && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/data/random-12_straight_frenet-planner.txt
-      md5: f3a4f68b4b93ff99da8cf0afc1e13734
-      size: 51717760
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics.py
-      md5: febb837793c40581060375298448dcc9
-      size: 4777
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/random_fast-12_straight_frenet-planner.txt
+      md5: 4a8db770867d50dc786cc5f39c020dcc
+      size: 90805389
+    - path: ../lmpcc/lmpcc_tools/scripts/metrics.py
+      md5: 4d43ff3b7d3929e9c8214926c83a7922
+      size: 7314
     outs:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-12_straight/frenet-planner.json
-      md5: b0d9a652fb15e0a712de494a3ac85c92
-      size: 1659
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-12_straight/frenet-planner.json
+      md5: 65657a02c25ad8cf12d3d1b8061d0d75
+      size: 5041
   compare@unstructured-medium:
-    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc/matlab_exports/python && python3 compare.py
-      random-12_straight && cd ../../../..
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 compare.py
+      random_fast-12_straight && cd ../../../..
     deps:
-    - path: ../lmpcc/lmpcc/matlab_exports/python/compare.py
-      md5: 5448ec723a66f4c55b17cf3dc38bf981
-      size: 4370
-    - path: ../lmpcc/lmpcc/matlab_exports/python/metrics/random-12_straight/frenet-planner.json
-      md5: b0d9a652fb15e0a712de494a3ac85c92
-      size: 1659
+    - path: ../lmpcc/lmpcc_tools/scripts/compare.py
+      md5: a4986850d5fc6093f82ea51a5a1e324a
+      size: 10626
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/random_fast-12_straight/frenet-planner.json
+      md5: 629a5b0f44f5ae6ecee3ed5e64bd5399
+      size: 4229
     outs:
-    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random-12_straight.tex
-      md5: b0801fead6afb611e73f94fa4895c5f9
-      size: 554
+    - path: ../../../../Documents/publications/multi-mpc-2023/latex/tables/random_fast-12_straight.tex
+      md5: c1724b8631cdde9d139141053d04f020
+      size: 612
+  run@medium:
+    cmd:
+    - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch
+      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random_social/8_corridor.xml"
+      project_name:="../../../../../../../Documents/publications/multi-mpc-2023/results/data"
+    deps:
+    - path: src/frenet_optimal_planner_node.cpp
+      md5: 8147cf5fefcf4400e4aa0a268613d01b
+      size: 59237
+    params:
+      ../pedestrian_simulator/config/configuration.yaml:
+        pedestrian_simulator.pedestrians.process_noise:
+        - 0.0
+        - 0.0
+        pedestrian_simulator.pedestrians.seed: 5
+      config/path.yaml:
+        dvc_trigger: 2
+        global_path.x:
+        - 0
+        - 3
+        - 6
+        - 9
+        - 12
+        - 15
+        - 18
+        - 21
+        - 24
+        - 27
+        - 30
+        - 33
+        - 36
+        - 39
+        - 42
+    outs:
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/interactive_random_social-8_corridor_frenet-planner.txt
+      md5: 9e513c0f721b162a2e829e44ff21b88b
+      size: 11325602
+  evaluate@medium:
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py
+      interactive_random_social-8_corridor frenet-planner && cd ../../../..
+    deps:
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/interactive_random_social-8_corridor_frenet-planner.txt
+      md5: 9e513c0f721b162a2e829e44ff21b88b
+      size: 11325602
+    - path: ../lmpcc/lmpcc_tools/scripts/metrics.py
+      md5: 729eefc136712a2168d211f213210475
+      size: 7986
+    outs:
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/interactive_random_social-8_corridor/frenet-planner.json
+      md5: fc439866a4fc6e2f713b70695adc00b1
+      size: 4216
+  run@low:
+    cmd:
+    - source ../../devel/setup.zsh && roslaunch frenet_optimal_planner frenet_optimal_planner.launch
+      overwrite_pedestrian_scenario:=true pedestrian_scenario:="random_social/4_corridor.xml"
+      project_name:="../../../../../../../Documents/publications/multi-mpc-2023/results/data"
+    deps:
+    - path: src/frenet_optimal_planner_node.cpp
+      md5: 8147cf5fefcf4400e4aa0a268613d01b
+      size: 59237
+    params:
+      ../pedestrian_simulator/config/configuration.yaml:
+        pedestrian_simulator.pedestrians.process_noise:
+        - 0.0
+        - 0.0
+        pedestrian_simulator.pedestrians.seed: 5
+      config/path.yaml:
+        dvc_trigger: 2
+        global_path.x:
+        - 0
+        - 3
+        - 6
+        - 9
+        - 12
+        - 15
+        - 18
+        - 21
+        - 24
+        - 27
+        - 30
+        - 33
+        - 36
+        - 39
+        - 42
+    outs:
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/interactive_random_social-4_corridor_frenet-planner.txt
+      md5: 65c0b41d21c7104868d4891e7556d0ed
+      size: 10431426
+  evaluate@low:
+    cmd: source ~/.zshrc && cd src/lmpcc/lmpcc_tools/scripts && python3 metrics.py
+      interactive_random_social-4_corridor frenet-planner && cd ../../../..
+    deps:
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/data/interactive_random_social-4_corridor_frenet-planner.txt
+      md5: 65c0b41d21c7104868d4891e7556d0ed
+      size: 10431426
+    - path: ../lmpcc/lmpcc_tools/scripts/metrics.py
+      md5: 729eefc136712a2168d211f213210475
+      size: 7986
+    outs:
+    - path: ../lmpcc/lmpcc_tools/scripts/data/../../../../../../../Documents/publications/multi-mpc-2023/results/metrics/interactive_random_social-4_corridor/frenet-planner.json
+      md5: 7f7e1d27fe37117d3daf4fb788ccedd7
+      size: 4229

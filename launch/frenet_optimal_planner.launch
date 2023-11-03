@@ -11,6 +11,7 @@
     <arg name="gui" default="false" />
     <arg name="pedestrian_scenario" default="" />
     <arg name="overwrite_pedestrian_scenario" default="false" />
+    <arg name="project_name" default="" />
 
     <!-- Robot Simulation -->
     <include file="$(find jackal_gazebo)/launch/jackal_world.launch">
@@ -21,6 +22,7 @@
     <include file="$(find mobile_robot_state_publisher)/launch/mobile_robot_publisher.launch">
     </include>
  
+  <rosparam command="load" file="$(find frenet_optimal_planner)/config/other.yaml"/>
   <rosparam command="load" file="$(find frenet_optimal_planner)/config/path.yaml"/>
   
   <include file="$(find pedestrian_simulator)/launch/simulation.launch">
@@ -29,6 +31,7 @@
     </include>
 
   <!-- Local Planner -->
+  <param name="recording/project_name" value="$(arg project_name)"/>
   <node name="frenet_optimal_planner_node" pkg="frenet_optimal_planner" type="frenet_optimal_planner_node" output="screen" required="true">
     <!-- Input Topic Names -->
     <!-- <param name="odom_topic"                    value="simulator/ground_truth/odom"/> -->
@@ -46,6 +49,8 @@
     <param name="traj_visual_topic"             value="lmpcc/collision_space"/>
     <param name="vehicle_cmd_topic"             value="auto_vehicle_cmd"/>
   </node>
+    <node pkg="lmpcc" type="collision_checker_node" name="collision_checker_node" respawn="false" output="screen" required="true"/>
+
 
   <!-- Autoware Object Visualizer -->
   <!-- <node ns="local_planner" pkg="lgsvl_utils" type="detected_objects_visualizer" name="autoware_objects_visualizer" output="log" respawn="true" /> -->

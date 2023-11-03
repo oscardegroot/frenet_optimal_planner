@@ -18,7 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   visualization_msgs
   dynamic_reconfigure
-  lmpcc_msgs
+  mpc_msgs
   tf
   tf2_ros
 )
@@ -85,7 +85,7 @@ generate_messages(
   geometry_msgs
   nav_msgs
   visualization_msgs
-  lmpcc_msgs
+  mpc_msgs
 )
 
 # ###############################################

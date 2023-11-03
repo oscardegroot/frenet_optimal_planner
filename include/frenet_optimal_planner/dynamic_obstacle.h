@@ -13,8 +13,8 @@
 
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Pose.h>
-#include <lmpcc_msgs/gaussian.h>
-#include <lmpcc_msgs/obstacle_gmm.h>
+#include <mpc_msgs/gaussian.h>
+#include <mpc_msgs/obstacle_gmm.h>
 
 #include "frenet_optimal_planner/collision_region.h"
 
@@ -86,7 +86,7 @@ public:
     std::vector<Disc> discs_;
 
     geometry_msgs::Pose pose_;
-    lmpcc_msgs::obstacle_gmm prediction_; // Deterministic or Gaussian
+    mpc_msgs::obstacle_gmm prediction_; // Deterministic or Gaussian
 
     /**
      * @brief Predict constant velocity for this obstacle if no prediction is given
@@ -100,7 +100,7 @@ public:
         prediction_.gaussians.clear();
         prediction_.probabilities.clear();
 
-        lmpcc_msgs::gaussian gaussian;
+        mpc_msgs::gaussian gaussian;
         gaussian.mean.poses.resize(N);
         gaussian.major_semiaxis.resize(N);
         gaussian.minor_semiaxis.resize(N);
@@ -135,7 +135,7 @@ public:
 
         for (int mode = 0; mode < modes; mode++)
         {
-            lmpcc_msgs::gaussian gaussian;
+            mpc_msgs::gaussian gaussian;
             gaussian.mean.poses.resize(N);
             gaussian.major_semiaxis.resize(N);
             gaussian.minor_semiaxis.resize(N);
@@ -143,10 +143,10 @@ public:
             double heading = -range + (2. * range / ((double)modes)) * ((double)mode);
             // formulate rotation matrix
             Eigen::Matrix2d rotation_matrix;
-		    rotation_matrix << std::cos(heading), std::sin(heading),
-			                  -std::sin(heading), std::cos(heading);                
+            rotation_matrix << std::cos(heading), std::sin(heading),
+                -std::sin(heading), std::cos(heading);
             // Eigen::Matrix2d rotation_matrix = Helpers::rotationMatrixFromHeading(heading);
-            
+
             Eigen::Vector2d rotated_twist = rotation_matrix * Eigen::Vector2d(twist.linear.x, twist.linear.y);
 
             for (int t = 0; t < N; t++)
@@ -175,7 +175,7 @@ public:
         prediction_.gaussians.clear();
         prediction_.probabilities.clear();
 
-        lmpcc_msgs::gaussian gaussian;
+        mpc_msgs::gaussian gaussian;
         gaussian.mean.poses.resize(N);
         gaussian.major_semiaxis.resize(N);
         gaussian.minor_semiaxis.resize(N);
@@ -198,7 +198,7 @@ public:
      *
      * @param prediction predictions to load
      */
-    void LoadPredictions(const lmpcc_msgs::obstacle_gmm &prediction)
+    void LoadPredictions(const mpc_msgs::obstacle_gmm &prediction)
     {
         prediction_ = prediction; // Simple copy
     }

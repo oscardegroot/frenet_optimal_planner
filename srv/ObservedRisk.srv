@@ -1,4 +1,4 @@
 geometry_msgs/PoseStamped[]  pred_traj
-lmpcc_msgs/obstacle_gmm[] obstacles
+mpc_msgs/obstacle_gmm[] obstacles
 ---
 float64 estimated_risk

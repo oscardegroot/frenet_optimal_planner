@@ -2,7 +2,7 @@
 import rospy
 import math
 import time
-from lmpcc_msgs.msg import obstacle_array
+from mpc_msgs.msg import obstacle_array
 from frenet_optimal_planner.srv import ObservedRisk
 import numpy as np
 from scipy.stats import multivariate_normal
